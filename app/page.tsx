@@ -1,101 +1,253 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { ArrowRight, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useEffect, useMemo, useState } from "react";
+import { Menu } from "@/components/ui/menu";
+import { aiRecap } from "@/lib/ai/client";
+import { activeUserId } from "@/lib/owner";
+import { useTemplates } from "@/lib/templates";
+import { Calendar } from "@/components/calendar";
+import { ConsistencyCard } from "@/components/consistency";
+import { StatCard } from "@/components/stat-card";
+import { Button } from "@/components/ui/button";
+import { Card, CardLabel } from "@/components/ui/card";
+import { Pill } from "@/components/ui/pill";
+import { Skeleton } from "@/components/ui/skeleton";
+import { E1rmLine } from "@/components/charts/e1rm-line";
+import { getExercise, statsRepo, workoutRepo } from "@/lib/repo";
+import { e1rm as epley } from "@/lib/utils";
+import { PROFILE } from "@/lib/seed";
+import type { E1rmPoint, PersonalRecord, WeekPoint, Workout } from "@/lib/types";
+import { addDays, formatLong, formatShort, formatWeight, fromKey, toKey } from "@/lib/utils";
+
+interface DashData {
+  weekly: {
+    points: WeekPoint[];
+    deltaPct: number;
+    thisWeek: { volume: number; deltaPct: number };
+  };
+  streak: number;
+  pr?: PersonalRecord;
+  recent: Workout[];
+  squat: E1rmPoint[];
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+export default function DashboardPage() {
+  const [data, setData] = useState<DashData | null>(null);
+  const plan = useMemo(() => workoutRepo.todayPlan(), []);
+  const templates = useTemplates().filter((t) => t.userId === activeUserId());
+  const router = useRouter();
+  const { data: authSession, status } = useSession();
+  const [recap, setRecap] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      statsRepo.weeklyVolume(8),
+      statsRepo.streakWeeks(),
+      statsRepo.latestPR(),
+      workoutRepo.recent(60),
+      statsRepo.e1rmSeries("back-squat"),
+    ]).then(([weekly, streak, pr, recent, squat]) => {
+      if (!alive) return;
+      setData({ weekly, streak, pr, recent, squat });
+      const pts = weekly.points;
+      const last = pts[pts.length - 1];
+      const prev = pts[pts.length - 2];
+      const sessionsIn = (weekStart?: string) =>
+        weekStart
+          ? recent.filter((w) => w.date >= weekStart && w.date < toKey(addDays(fromKey(weekStart), 7))).length
+          : 0;
+      if (last && status === "authenticated") {
+        aiRecap({
+          volume: last.volume,
+          sessions: sessionsIn(last.weekStart),
+          prevVolume: prev?.volume ?? 0,
+          prevSessions: sessionsIn(prev?.weekStart),
+        }).then((line) => alive && setRecap(line || null));
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [status]);
+
+  // strength headline: the best set of the current week (by e1RM)
+  const weekBest = useMemo(() => {
+    if (!data) return undefined;
+    const weekStart = data.weekly.points.length
+      ? toKey(addDays(fromKey(data.weekly.points[data.weekly.points.length - 1].weekStart), 7))
+      : toKey(new Date());
+    return data.recent
+      .filter((w) => w.date >= weekStart)
+      .flatMap((w) =>
+        w.exercises
+          .filter((ex) => getExercise(ex.exerciseId)?.equipment === "Barbell")
+          .flatMap((ex) =>
+            ex.sets.map((st) => ({
+              name: getExercise(ex.exerciseId)?.name ?? "",
+              w: st.weight,
+              r: st.reps,
+              score: epley(st.weight, st.reps),
+            }))
+          )
+      )
+      .sort((a, b) => b.score - a.score)[0];
+  }, [data]);
+  const logged = useMemo(
+    () => new Set((data?.recent ?? []).map((w) => w.date)),
+    [data]
+  );
+  const prExercise = data?.pr ? getExercise(data.pr.exerciseId) : undefined;
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center text-center">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-card text-[16px] font-semibold text-primary">
+          F
+        </span>
+        <h1 className="mt-6 text-display text-primary">Ferrum</h1>
+        <p className="mt-3 text-[15px] text-secondary">
+          The quiet workout log for numbers that matter.
+        </p>
+        <Link href="/signin" className="mt-8">
+          <Button variant="primary">Sign in to start your log</Button>
+        </Link>
+        <p className="mt-3 text-[12.5px] text-tertiary">Your log. Yours alone.</p>
+      </div>
+    );
+  }
+
+  const firstName = authSession?.user?.name?.split(" ")[0] ?? PROFILE.name;
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <>
+      <header className="flex items-center justify-between gap-4">
+        <div>
+          <CardLabel>{formatLong(toKey(new Date()))}</CardLabel>
+          <h1 className="mt-1 text-h1 text-primary">
+            {greeting()}, {firstName}
+          </h1>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/profile"
+          aria-label="Profile"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-card text-[14px] font-semibold text-secondary transition-colors hover:border-line-hover hover:text-primary"
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          {firstName[0]}
+        </Link>
+      </header>
+
+      {/* today */}
+      <Card className="mt-8 p-6 md:p-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          <div className="min-w-0 flex-1">
+            <CardLabel>Today&apos;s workout</CardLabel>
+            <h2 className="mt-2 text-h2 text-primary">{plan.name}</h2>
+            <p className="mt-1 text-[13.5px] text-tertiary">
+              {plan.exercises.length} exercises · ~{plan.estimatedMin} min
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {plan.exercises.map((pe) => {
+                const ex = getExercise(pe.exerciseId);
+                return ex ? <Pill key={pe.exerciseId}>{ex.name}</Pill> : null;
+              })}
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col gap-1.5 md:items-end">
+            <Link href="/workout">
+              <Button variant="primary" className="w-full md:w-auto">
+                Start workout
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Button>
+            </Link>
+            <Menu
+              ariaLabel="Start from a template or blank"
+              trigger={
+                <span className="flex h-8 items-center gap-1 rounded-input px-3 text-[12.5px] text-tertiary transition-colors duration-150 hover:text-secondary">
+                  From template
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                </span>
+              }
+              items={[
+                ...templates.map((t) => ({
+                  label: t.name,
+                  onSelect: () => router.push(`/workout?template=${t.id}`),
+                })),
+                {
+                  label: "Blank workout",
+                  onSelect: () => router.push("/workout?blank=1"),
+                },
+              ]}
+            />
+          </div>
+        </div>
+      </Card>
+
+      {recap && <p className="mt-4 text-[13px] text-tertiary">{recap}</p>}
+
+      {/* stats */}
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {!data ? (
+          Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-[124px] rounded-card" />)
+        ) : (
+          <>
+            <StatCard
+              label="Top set this week"
+              value={weekBest ? formatWeight(weekBest.w) : "—"}
+              unit={weekBest ? `kg × ${weekBest.r}` : undefined}
+              sub={weekBest ? weekBest.name : "No sets logged yet"}
+            />
+            <StatCard
+              label="Current streak"
+              value={String(data.streak)}
+              unit={data.streak === 1 ? "week" : "weeks"}
+              sub="3+ sessions each week"
+            />
+            <StatCard
+              label="Recent PR"
+              gold
+              value={data.pr ? formatWeight(data.pr.e1rm) : "—"}
+              unit="kg e1RM"
+              sub={
+                data.pr && prExercise
+                  ? `${prExercise.name} · ${formatShort(data.pr.date)}`
+                  : undefined
+              }
+            />
+          </>
+        )}
+      </div>
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-5">
+        <Card className="p-5 md:p-6 lg:col-span-2">
+          {data ? <Calendar logged={logged} /> : <Skeleton className="h-[280px]" />}
+        </Card>
+        <Card className="p-5 md:p-6 lg:col-span-3">
+          <CardLabel>Squat e1RM · 8 weeks</CardLabel>
+          <div className="mt-4">
+            {data ? (
+              <E1rmLine points={data.squat} height={220} />
+            ) : (
+              <Skeleton className="h-[220px]" />
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-5">
+        <ConsistencyCard weeks={20} />
+      </div>
+    </>
   );
 }
