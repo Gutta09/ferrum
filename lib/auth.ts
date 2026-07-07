@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { getServerSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { prisma } from "./db";
+import { DB_ENABLED, prisma } from "./db";
 import { DEMO_USER_ID } from "./owner";
 
 const providers: NextAuthOptions["providers"] = [];
@@ -26,6 +26,7 @@ providers.push(
       password: { label: "Password", type: "password" },
     },
     authorize: async (creds) => {
+      if (!DB_ENABLED) return null; // demo mode has no accounts
       const email = String(creds?.email ?? "").trim().toLowerCase();
       const password = String(creds?.password ?? "");
       if (!email || !password) return null;
@@ -45,12 +46,15 @@ providers.push(
     name: "Demo lifter",
     credentials: {},
     authorize: async () => {
-      // ensure the demo row exists even on a fresh database
-      await prisma.user.upsert({
-        where: { id: DEMO_USER_ID },
-        update: {},
-        create: { id: DEMO_USER_ID, email: "demo@ferrum.local", name: "Bhargav" },
-      });
+      // ensure the demo row exists when a database is configured; in demo mode
+      // there's no DB, so just hand back the demo identity
+      if (DB_ENABLED) {
+        await prisma.user.upsert({
+          where: { id: DEMO_USER_ID },
+          update: {},
+          create: { id: DEMO_USER_ID, email: "demo@ferrum.local", name: "Bhargav" },
+        });
+      }
       return { id: DEMO_USER_ID, name: "Bhargav", email: "demo@ferrum.local" };
     },
   })

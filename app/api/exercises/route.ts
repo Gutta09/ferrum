@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DB_ENABLED } from "@/lib/db";
 import { requireUserId, UnauthorizedError } from "@/lib/server/session";
 import { listCustomExercises, saveCustomExercise } from "@/lib/server/workouts";
 
@@ -6,6 +7,7 @@ const MUSCLES = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"];
 const EQUIPMENT = ["Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight"];
 
 export async function GET() {
+  if (!DB_ENABLED) return NextResponse.json({ exercises: [] });
   try {
     const userId = await requireUserId();
     return NextResponse.json({ exercises: await listCustomExercises(userId) });
@@ -17,6 +19,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!DB_ENABLED) return NextResponse.json({ ok: true, demo: true });
   try {
     const userId = await requireUserId();
     const b = await req.json();

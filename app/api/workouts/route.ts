@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { DB_ENABLED } from "@/lib/db";
+import { WORKOUTS } from "@/lib/seed";
 import { requireUserId, UnauthorizedError } from "@/lib/server/session";
 import {
   listWorkouts,
@@ -8,6 +10,8 @@ import {
 } from "@/lib/server/workouts";
 
 export async function GET() {
+  // demo mode (no database): serve the seed log so the site works live
+  if (!DB_ENABLED) return NextResponse.json({ workouts: WORKOUTS });
   try {
     const userId = await requireUserId();
     return NextResponse.json({ workouts: await listWorkouts(userId) });
@@ -19,6 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // demo mode: accept but don't persist (matches the pre-DB behavior)
+  if (!DB_ENABLED) return NextResponse.json({ id: "demo", demo: true });
   try {
     const userId = await requireUserId();
     const body = await req.json();
@@ -33,6 +39,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!DB_ENABLED) return NextResponse.json({ ok: true, demo: true });
   try {
     const userId = await requireUserId();
     const { id, name } = await req.json();

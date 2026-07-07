@@ -133,8 +133,10 @@ export default function DashboardPage() {
     <>
       <header className="flex items-center justify-between gap-4">
         <div>
-          <CardLabel>{formatLong(toKey(new Date()))}</CardLabel>
-          <h1 className="mt-1 text-h1 text-primary">
+          {/* time-based, so server and client clocks can differ — let the
+              client value win without a hydration warning */}
+          <CardLabel suppressHydrationWarning>{formatLong(toKey(new Date()))}</CardLabel>
+          <h1 className="mt-1 text-h1 text-primary" suppressHydrationWarning>
             {greeting()}, {firstName}
           </h1>
         </div>

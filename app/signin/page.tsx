@@ -16,6 +16,10 @@ const ERRORS: Record<string, string> = {
   Default: "Sign-in failed. Try again.",
 };
 
+// set when the site is deployed without a database — accounts are unavailable,
+// so we show only the one-click demo entry
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+
 function SignInView() {
   const params = useSearchParams();
   const [hasGoogle, setHasGoogle] = useState(false);
@@ -87,6 +91,13 @@ function SignInView() {
       )}
 
       <Card className="mt-6 flex w-full flex-col gap-3 p-5">
+        {DEMO_MODE ? (
+          <p className="text-[12.5px] leading-relaxed text-tertiary">
+            Live demo — explore with the seeded account. Connect a database to
+            enable real sign-ups and saved logs.
+          </p>
+        ) : (
+        <>
         <form onSubmit={submitCredentials} className="flex flex-col gap-2.5">
           {mode === "signup" && (
             <Input
@@ -143,6 +154,8 @@ function SignInView() {
           <span className="text-[11px] uppercase tracking-[0.02em] text-tertiary">or</span>
           <span className="h-px flex-1 bg-line" />
         </div>
+        </>
+        )}
 
         {hasGoogle && (
           <Button

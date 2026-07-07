@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { DB_ENABLED, prisma } from "@/lib/db";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -19,6 +19,11 @@ function limited(ip: string) {
 }
 
 export async function POST(req: Request) {
+  if (!DB_ENABLED)
+    return NextResponse.json(
+      { error: "Sign-up needs the database. Use the demo account for now." },
+      { status: 503 }
+    );
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (limited(ip))
     return NextResponse.json({ error: "Too many attempts. Wait a minute." }, { status: 429 });
