@@ -21,7 +21,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B0B0C",
+  width: "device-width",
+  initialScale: 1,
+  // let content scroll under the notch / home indicator
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0B0B0C" },
+    { media: "(prefers-color-scheme: light)", color: "#FAFAFA" },
+  ],
 };
 
 export default function RootLayout({

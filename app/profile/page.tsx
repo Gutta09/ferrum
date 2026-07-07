@@ -1,11 +1,13 @@
 "use client";
 
 import { Clock, Flame, Medal, Trophy, X, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { CoinVault } from "@/components/coin";
 import { ConsistencyCard } from "@/components/consistency";
+import { FavouriteStar } from "@/components/favourite-star";
 import { Physique } from "@/components/physique";
 import { Button } from "@/components/ui/button";
 import { Card, CardLabel } from "@/components/ui/card";
@@ -17,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { exportCSV, exportJSON, importJSON } from "@/lib/export";
+import { useFavourites } from "@/lib/favourites";
 import { activeUserId } from "@/lib/owner";
 import {
   activePlaylist,
@@ -145,8 +148,10 @@ export default function ProfilePage() {
       </div>
 
       <div className="mt-10 grid gap-5 lg:grid-cols-2">
-        <section aria-label="Favorite exercises">
-          <CardLabel>Favorite exercises</CardLabel>
+        <FavouritesSection />
+
+        <section aria-label="Most trained">
+          <CardLabel>Most trained</CardLabel>
           <Card className="mt-4 divide-y divide-line">
             {!stats ? (
               <Skeleton className="m-5 h-[132px]" />
@@ -289,6 +294,43 @@ function TemplatesSection() {
             </div>
           );
         })}
+      </Card>
+    </section>
+  );
+}
+
+function FavouritesSection() {
+  const favourites = useFavourites();
+  const exercises = favourites
+    .map((id) => getExercise(id))
+    .filter((e): e is NonNullable<typeof e> => Boolean(e));
+  return (
+    <section aria-label="Favourite exercises">
+      <CardLabel>Favourites</CardLabel>
+      <Card className="mt-4 divide-y divide-line">
+        {exercises.length === 0 ? (
+          <p className="px-5 py-8 text-center text-[13px] text-tertiary">
+            Star an exercise to keep it one tap away.
+          </p>
+        ) : (
+          exercises.map((ex) => (
+            <div key={ex.id} className="flex items-center gap-3 px-5 py-3.5">
+              <FavouriteStar exerciseId={ex.id} size={15} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-medium text-primary">{ex.name}</p>
+                <p className="text-[12px] text-tertiary">
+                  {ex.muscle} · {ex.equipment}
+                </p>
+              </div>
+              <Link
+                href={`/exercises?q=${encodeURIComponent(ex.name)}`}
+                className="text-[12.5px] text-tertiary transition-colors hover:text-secondary"
+              >
+                View
+              </Link>
+            </div>
+          ))
+        )}
       </Card>
     </section>
   );

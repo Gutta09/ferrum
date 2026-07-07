@@ -1,13 +1,13 @@
-// Data in, data out — even against the mock store. Trust is portability.
+// Data in, data out. Trust is portability. Exports read the DB-backed cache;
+// imports POST each workout to the owner-scoped API so they land in Postgres.
 
-import { activeUserId } from "./owner";
-import { WORKOUTS } from "./seed";
 import type { Workout } from "./types";
 import { getExercise } from "./repo";
 import { toKey } from "./utils";
+import { cachedWorkouts, ensureWorkouts, invalidateWorkouts } from "./workout-cache";
 
-// exports carry only the signed-in user's log; imports become theirs
-const mine = () => WORKOUTS.filter((w) => w.userId === activeUserId());
+// the cache already holds only the signed-in user's rows
+const mine = () => cachedWorkouts();
 
 function download(filename: string, content: string, mime: string) {
   const blob = new Blob([content], { type: mime });
@@ -54,18 +54,40 @@ export function exportCSV() {
   download(`ferrum-export-${toKey(new Date())}.csv`, csv, "text/csv");
 }
 
-/** Merges valid workouts into the mock store; returns the count imported. */
+/** Imports valid workouts into the signed-in user's log via the server (they
+ * become owner-scoped rows). Returns the count imported. */
 export async function importJSON(file: File): Promise<number> {
   const text = await file.text();
   const data = JSON.parse(text) as { workouts?: Workout[] };
   const incoming = Array.isArray(data.workouts) ? data.workouts : [];
-  const existing = new Set(WORKOUTS.map((w) => w.id));
   let count = 0;
   for (const w of incoming) {
-    if (!w?.id || !w?.date || !Array.isArray(w?.exercises) || existing.has(w.id)) continue;
-    WORKOUTS.push({ ...w, userId: activeUserId() });
-    count += 1;
+    if (!w?.date || !Array.isArray(w?.exercises)) continue;
+    const res = await fetch("/api/workouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: w.name ?? "Imported",
+        date: w.date,
+        durationMin: w.durationMin ?? 0,
+        exercises: w.exercises.map((ex) => ({
+          exerciseId: ex.exerciseId,
+          notes: ex.notes,
+          sets: ex.sets.map((s) => ({
+            weight: s.weight,
+            reps: s.reps,
+            rpe: s.rpe ?? null,
+            completed: s.completed,
+            isPR: s.isPR,
+          })),
+        })),
+      }),
+    });
+    if (res.ok) count += 1;
   }
-  WORKOUTS.sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (count) {
+    invalidateWorkouts();
+    await ensureWorkouts();
+  }
   return count;
 }

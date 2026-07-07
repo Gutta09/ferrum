@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Menu } from "@/components/ui/menu";
 import { NumberStepper } from "@/components/ui/number-stepper";
 import { Pill } from "@/components/ui/pill";
+import { FavouriteStar } from "@/components/favourite-star";
 import { PlatePopover } from "@/components/plate-popover";
 import type { Suggestion } from "@/lib/training";
 import type { Exercise, LastPerformance } from "@/lib/types";
@@ -99,6 +100,7 @@ export function ExerciseRow({
         <h3 className="truncate text-[15px] font-semibold tracking-tight text-primary">
           {exercise.name}
         </h3>
+        <FavouriteStar exerciseId={exercise.id} size={15} />
         <Pill className="hidden sm:inline-flex">{exercise.muscle}</Pill>
         {lastTop && (
           <span className="hidden font-mono text-[12px] tabular-nums text-tertiary md:block">

@@ -78,6 +78,11 @@ export interface E1rmPoint {
 export interface HeatmapDay {
   date: string;
   volume: number;
+  /** distinct exercises logged that day — drives cell intensity */
+  variations: number;
+  /** total working sets that day — tooltip carries depth alongside spread */
+  sets: number;
+  workoutName?: string;
   level: 0 | 1 | 2 | 3 | 4;
 }
 

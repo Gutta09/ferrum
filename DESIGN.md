@@ -284,6 +284,84 @@ returned line containing a number that doesn't appear in the input facts.
 Mismatch or no key → the panel shows the takeaways themselves. Page order:
 insights → headline stats → charts with takeaways.
 
+## Favourites, variation heatmap, date deep-linking
+
+**Favourites** are owner-scoped (`lib/favourites.ts`, `localStorage` per user)
+and toggle from one `FavouriteStar` that reads the store, so a tap on an
+exercise card, a logging-screen row, the add-exercise picker, or the Profile
+list syncs everywhere at once. They surface where they save time: a
+"Favourites" filter + favourites-first ordering in the library, favourites
+floated to the top of the add-exercise picker, and a real Profile "Favourites"
+section (the old session-count list stays as "Most trained"). A fresh account
+has none.
+
+**Variation-driven heatmap.** Cell intensity now reflects the *number of
+distinct exercises* logged that day (0 / ≤2 / ≤4 / ≤6 / 7+ → the 5-step
+emerald ramp), not total volume. Tradeoff, stated plainly: variation-count
+rewards spread over depth — a 3-hour session on one lift reads cooler than a
+quick full-body day. To keep depth honest the **tooltip carries both**: workout
+name, variation count, *and* total working sets. Switching the metric back to
+sets is a one-line change in `statsRepo.heatmap` (level reads `sets` instead of
+`variations`) since both already travel on every cell.
+
+**Date deep-linking.** History reads `?d=YYYY-MM-DD`: it keeps the full
+timeline, scrolls the matching card into view, ring-highlights it, and shows a
+clearable "Jumped to {date}" banner — or, for a date with no workout, an "Add
+workout" prompt. Every date affordance routes here: dashboard calendar days,
+and heatmap cells (a logged cell → `/history?d=…`, an empty past cell →
+`/workout`). Cells and calendar days show a `line-hover` ring on hover so they
+read as interactive.
+
+## Backend, persistence & real auth
+
+**Why Postgres + Prisma.** The mock layer lost data on reload because it lived in
+a module array. Postgres (via Prisma) gives durable, relational, type-safe
+storage that deploys cleanly on Vercel with a managed provider (Neon/Supabase
+free tiers). The schema mirrors the app's types 1:1 — `User`, `Workout`,
+`WorkoutExercise`, `SetEntry`, custom `Exercise`, plus `Circle`,
+`CircleMembership`, `Challenge` — every user-owned row carrying `userId`.
+
+**The mock→DB swap was a swap, not a rewrite** — because every read was already
+scoped through `byUser()` and every write through `assertOwner`. Only the *source*
+changed: `byUser()` now returns a client cache (`lib/workout-cache`) hydrated once
+from the owner-scoped `GET /api/workouts`; all the derivation logic (volume, e1RM,
+heatmap, streaks) is untouched and simply runs over DB data. The exercise
+*catalog* stays static reference data; user-created exercises persist to the DB
+and merge in.
+
+**Credentials auth + hashing.** Email/password signup (`POST /api/signup`) stores
+a **bcrypt** hash (cost 12) — never plaintext — and creates a fresh empty
+owner-scoped log. Login verifies via NextAuth's Credentials provider against the
+DB. Google OAuth and the one-click demo remain. Sessions are JWT; `session.user.id`
+is the real database id. Auth endpoints are rate-limited.
+
+**Tier-2 enforcement is now live.** `lib/server/session.ts` resolves the owner
+from the server session (never the request body) and re-checks `assertOwner` on
+the server against real rows; owner-scoped `WHERE userId` clauses mean a guessed
+id can't touch another user's data. All inputs are validated and bounded
+server-side (no negative weights, sane rep/RPE ranges, sanitized text) before
+they reach the DB. **Verified:** a logged workout persists across refresh and
+sign-out/sign-in; a fresh signup has an empty log; wrong passwords are rejected;
+a second account sees none of the first's data.
+
+**YouTube is embed-only, on purpose.** There is no official YouTube Music API,
+and the YouTube Data API prohibits audio-only/background playback — building that
+would risk the app. So the multi-playlist system accepts a YouTube *playlist*
+link and renders the compliant embedded player (`/embed/videoseries?list=…`)
+alongside Spotify/Apple, reusing the same paste-a-link, pick-active UX.
+
+**Mobile.** `touch-action: manipulation` + `-webkit-tap-highlight-color:
+transparent` on all interactive elements removes the 300ms tap delay and the
+grey flash, so taps fire immediately and can't land on an element that shifted
+under the finger; a proper `width=device-width` viewport with `viewport-fit:
+cover` and theme-aware `themeColor`.
+
+**Personal prefs (favourites, templates, playlists, photo metadata)** remain
+client-persisted in `localStorage`, owner-keyed — they already survive reload
+per device; migrating them to their (already-defined) DB tables is a
+non-blocking follow-up. Progress photos stay client object-URLs until a blob
+store is added.
+
 ## Guardrails (enforced)
 
 No emojis, no gradients, no glow, no gamification. White = one primary action per

@@ -1,8 +1,11 @@
-// Typed mock repositories. Everything async so a real API can drop in behind
-// the same interfaces; stats are derived from the log, never stored.
+// Repository layer. The interface is unchanged from the mock era — only the
+// data SOURCE moved: byUser() now reads the DB-backed client cache
+// (lib/workout-cache, hydrated from the owner-scoped /api/workouts) instead of
+// an in-memory seed array. Scoping-by-userId from day one is why this was a
+// swap, not a rewrite. Stats are still derived from the log, never stored.
 
-import { activeUserId } from "./owner";
-import { EXERCISES, WORKOUTS } from "./seed";
+import { EXERCISES } from "./seed";
+import { cachedWorkouts, ensureWorkouts } from "./workout-cache";
 import type {
   Difficulty,
   E1rmPoint,
@@ -25,10 +28,9 @@ import {
   toKey,
 } from "./utils";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// every query is scoped to the signed-in user; the exercise library is global
-const byUser = () => WORKOUTS.filter((w) => w.userId === activeUserId());
+// the cache already holds only the signed-in user's rows (server-enforced);
+// the exercise library is global reference data
+const byUser = () => cachedWorkouts();
 
 /** lifetime workout count for the active user — the coin vault reads this */
 export const userWorkoutCount = () => byUser().length;
@@ -77,11 +79,11 @@ export interface ExerciseFilter {
 
 export const exerciseRepo = {
   async list(): Promise<Exercise[]> {
-    await delay(120);
+    await ensureWorkouts();
     return EXERCISES;
   },
   async search(f: ExerciseFilter): Promise<Exercise[]> {
-    await delay(80);
+    await ensureWorkouts();
     const q = f.q?.trim().toLowerCase() ?? "";
     return EXERCISES.filter(
       (e) =>
@@ -95,11 +97,11 @@ export const exerciseRepo = {
 
 export const workoutRepo = {
   async list(): Promise<Workout[]> {
-    await delay(550); // history shows its skeleton honestly
+    await ensureWorkouts();
     return [...byUser()].reverse();
   },
   async recent(n: number): Promise<Workout[]> {
-    await delay(150);
+    await ensureWorkouts();
     return [...byUser()].reverse().slice(0, n);
   },
 };
@@ -125,7 +127,7 @@ export const statsRepo = {
     deltaPct: number;
     thisWeek: { volume: number; deltaPct: number };
   }> {
-    await delay(150);
+    await ensureWorkouts();
     const currentStart = startOfWeek(new Date());
     const volumeBetween = (from: Date, to: Date) =>
       byUser().filter((w) => w.date >= toKey(from) && w.date < toKey(to)).reduce(
@@ -161,7 +163,7 @@ export const statsRepo = {
 
   /** completed sets per complete week — "weekly progress" without repeating the volume chart */
   async weeklySets(weeks = 8): Promise<WeekPoint[]> {
-    await delay(150);
+    await ensureWorkouts();
     const currentStart = startOfWeek(new Date());
     const points: WeekPoint[] = [];
     for (let i = weeks; i >= 1; i -= 1) {
@@ -179,7 +181,7 @@ export const statsRepo = {
   },
 
   async streakWeeks(): Promise<number> {
-    await delay(100);
+    await ensureWorkouts();
     const byWeek = new Map<string, number>();
     for (const w of byUser()) {
       const key = toKey(startOfWeek(new Date(w.date + "T12:00")));
@@ -203,7 +205,7 @@ export const statsRepo = {
     longestWeeks: number;
     activeDays: number;
   }> {
-    await delay(120);
+    await ensureWorkouts();
     const byWeek = new Map<string, number>();
     for (const w of byUser()) {
       const key = toKey(startOfWeek(new Date(w.date + "T12:00")));
@@ -229,7 +231,7 @@ export const statsRepo = {
   },
 
   async personalRecords(): Promise<PersonalRecord[]> {
-    await delay(200);
+    await ensureWorkouts();
     const best = new Map<string, PersonalRecord>();
     for (const w of byUser()) {
       for (const ex of w.exercises) {
@@ -264,7 +266,7 @@ export const statsRepo = {
   },
 
   async e1rmSeries(exerciseId: string): Promise<E1rmPoint[]> {
-    await delay(120);
+    await ensureWorkouts();
     const points: E1rmPoint[] = [];
     let best = 0;
     for (const w of byUser()) {
@@ -279,16 +281,26 @@ export const statsRepo = {
     return points;
   },
 
+  /** Cell intensity is driven by the number of distinct exercises logged that
+   * day (variety), not total volume; the tooltip also carries sets + workout
+   * so depth isn't hidden behind spread. See DESIGN.md for the tradeoff. */
   async heatmap(weeks = 20): Promise<HeatmapDay[][]> {
-    await delay(150);
-    const volumes = new Map(byUser().map((w) => [w.date, workoutVolume(w)]));
-    const nonzero = [...volumes.values()].sort((a, b) => a - b);
-    const q = (p: number) => nonzero[Math.floor(p * (nonzero.length - 1))] ?? 0;
-    const t1 = q(0.25);
-    const t2 = q(0.5);
-    const t3 = q(0.75);
+    await ensureWorkouts();
+    const byDate = new Map<
+      string,
+      { volume: number; variations: number; sets: number; name: string }
+    >();
+    for (const w of byUser()) {
+      byDate.set(w.date, {
+        volume: workoutVolume(w),
+        variations: new Set(w.exercises.map((ex) => ex.exerciseId)).size,
+        sets: w.exercises.reduce((n, ex) => n + ex.sets.length, 0),
+        name: w.name,
+      });
+    }
+    // 5 fixed variation bands — an empty account still reads correctly
     const level = (v: number): HeatmapDay["level"] =>
-      v === 0 ? 0 : v <= t1 ? 1 : v <= t2 ? 2 : v <= t3 ? 3 : 4;
+      v === 0 ? 0 : v <= 2 ? 1 : v <= 4 ? 2 : v <= 6 ? 3 : 4;
 
     const grid: HeatmapDay[][] = [];
     const thisMonday = startOfWeek(new Date());
@@ -296,8 +308,15 @@ export const statsRepo = {
       const col: HeatmapDay[] = [];
       for (let d = 0; d < 7; d += 1) {
         const date = toKey(addDays(thisMonday, -7 * wk + d));
-        const v = volumes.get(date) ?? 0;
-        col.push({ date, volume: v, level: level(v) });
+        const hit = byDate.get(date);
+        col.push({
+          date,
+          volume: hit?.volume ?? 0,
+          variations: hit?.variations ?? 0,
+          sets: hit?.sets ?? 0,
+          workoutName: hit?.name,
+          level: level(hit?.variations ?? 0),
+        });
       }
       grid.push(col);
     }
@@ -305,7 +324,7 @@ export const statsRepo = {
   },
 
   async muscleBalance(weeksBack = 4): Promise<MuscleShare[]> {
-    await delay(150);
+    await ensureWorkouts();
     const cutoff = toKey(addDays(new Date(), -7 * weeksBack));
     const acc = new Map<MuscleGroup, number>();
     let total = 0;
@@ -325,7 +344,7 @@ export const statsRepo = {
   },
 
   async lifetime(): Promise<LifetimeStats> {
-    await delay(200);
+    await ensureWorkouts();
     let volume = 0;
     let sets = 0;
     let prs = 0;

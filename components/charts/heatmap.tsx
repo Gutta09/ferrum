@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { HeatmapDay } from "@/lib/types";
-import { formatKg, formatShort, fromKey } from "@/lib/utils";
+import { formatShort, fromKey } from "@/lib/utils";
 
 // lightness-monotonic emerald ramp (validated), level 0 = rest day
 const LEVELS = [
@@ -24,6 +25,12 @@ interface Tip {
 
 export function Heatmap({ grid }: { grid: HeatmapDay[][] }) {
   const [tip, setTip] = useState<Tip | null>(null);
+  const router = useRouter();
+  const today = new Date();
+  const openDay = (day: HeatmapDay) => {
+    if (day.variations > 0) router.push(`/history?d=${day.date}`);
+    else if (fromKey(day.date) <= today) router.push("/workout");
+  };
 
   const show = (e: React.SyntheticEvent<HTMLButtonElement>, day: HeatmapDay) => {
     const el = e.currentTarget;
@@ -72,15 +79,16 @@ export function Heatmap({ grid }: { grid: HeatmapDay[][] }) {
                   key={day.date}
                   type="button"
                   aria-label={
-                    day.volume > 0
-                      ? `${formatShort(day.date)}: ${formatKg(day.volume)}`
+                    day.variations > 0
+                      ? `${formatShort(day.date)}: ${day.variations} variations, ${day.sets} sets — open in history`
                       : `${formatShort(day.date)}: rest day`
                   }
                   onMouseEnter={(e) => show(e, day)}
                   onFocus={(e) => show(e, day)}
                   onMouseLeave={() => setTip(null)}
                   onBlur={() => setTip(null)}
-                  className="rounded-[3px] transition-transform duration-100 hover:scale-110"
+                  onClick={() => openDay(day)}
+                  className="rounded-[3px] transition-transform duration-100 hover:scale-110 hover:ring-1 hover:ring-line-hover"
                   style={{
                     width: CELL,
                     height: CELL,
@@ -94,21 +102,31 @@ export function Heatmap({ grid }: { grid: HeatmapDay[][] }) {
 
         {tip && (
           <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-input border border-line bg-card px-3 py-1.5 shadow-ambient"
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-input border border-line bg-card px-3 py-2 shadow-ambient"
             style={{ left: tip.left, top: tip.top - 6 }}
             role="status"
           >
-            <span className="font-mono text-[12px] tabular-nums text-primary">
-              {tip.day.volume > 0 ? formatKg(tip.day.volume) : "Rest"}
-            </span>
-            <span className="ml-2 text-[11px] text-tertiary">
+            {tip.day.variations > 0 ? (
+              <>
+                <span className="block text-[12px] font-medium text-primary">
+                  {tip.day.workoutName ?? "Workout"}
+                </span>
+                <span className="mt-0.5 block font-mono text-[11px] tabular-nums text-secondary">
+                  {tip.day.variations} variation{tip.day.variations === 1 ? "" : "s"} ·{" "}
+                  {tip.day.sets} set{tip.day.sets === 1 ? "" : "s"}
+                </span>
+              </>
+            ) : (
+              <span className="text-[12px] text-secondary">Rest</span>
+            )}
+            <span className="mt-0.5 block text-[11px] text-tertiary">
               {formatShort(tip.day.date)}
             </span>
           </div>
         )}
 
         <div className="mt-3 flex items-center gap-1.5 pl-[30px] text-[10px] text-tertiary">
-          <span className="mr-1">Less</span>
+          <span className="mr-1">Fewer variations</span>
           {LEVELS.map((c) => (
             <span
               key={c}

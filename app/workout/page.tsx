@@ -12,6 +12,7 @@ import {
   type LiveExercise,
   type LiveSet,
 } from "@/components/exercise-row";
+import { FavouriteStar } from "@/components/favourite-star";
 import { NowPlaying } from "@/components/now-playing";
 import { RestTimer } from "@/components/rest-timer";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,10 @@ import { Pill } from "@/components/ui/pill";
 import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { bestE1rm, getExercise, lastPerformance, userWorkoutCount, workoutRepo } from "@/lib/repo";
+import { ensureWorkouts, invalidateWorkouts } from "@/lib/workout-cache";
 import { EXERCISES } from "@/lib/seed";
 import { useSettings } from "@/lib/settings";
+import { useFavourites } from "@/lib/favourites";
 import { addTemplate, getTemplate } from "@/lib/templates";
 import { aiEnrich, aiNarratePR, aiParseImage, aiParseSets, aiSummarize } from "@/lib/ai/client";
 import { sanityCheck } from "@/lib/ai/fallback";
@@ -80,21 +83,30 @@ function WorkoutView() {
   // chose one of their own templates
   const [session, setSession] = useState<LiveExercise[]>([]);
   const [sessionName, setSessionName] = useState("Today's session");
-  // templates can live only in this browser's storage — resolve them client-side
-  const [ready, setReady] = useState(!templateId);
+  // hydrate the DB workout cache so ghost rows (last time / suggestions) have
+  // data, and resolve any chosen template, before the logging grid renders
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (!templateId) return;
-    const t = getTemplate(templateId);
-    if (t) {
-      setSessionName(t.name);
-      setSession(
-        t.exercises.flatMap((te) => {
-          const ex = buildExercise(te.exerciseId, te.sets);
-          return ex ? [ex] : [];
-        })
-      );
-    }
-    setReady(true);
+    let alive = true;
+    ensureWorkouts().then(() => {
+      if (!alive) return;
+      if (templateId) {
+        const t = getTemplate(templateId);
+        if (t) {
+          setSessionName(t.name);
+          setSession(
+            t.exercises.flatMap((te) => {
+              const ex = buildExercise(te.exerciseId, te.sets);
+              return ex ? [ex] : [];
+            })
+          );
+        }
+      }
+      setReady(true);
+    });
+    return () => {
+      alive = false;
+    };
   }, [templateId]);
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -375,6 +387,41 @@ function WorkoutView() {
     setRestSession(0);
     setTimerState("paused");
     setFinished({ volume: vol, seconds, setsDone: done, prCount, prs });
+
+    // persist to the database — the workout survives refresh, sign-out, devices
+    const payload = {
+      name: sessionRef.current.length ? sessionName : "Session",
+      date: toKey(new Date()),
+      durationMin: Math.round(seconds / 60),
+      exercises: sessionRef.current.map((ex) => ({
+        exerciseId: ex.exercise.id,
+        notes: ex.notes || undefined,
+        sets: ex.sets
+          .filter((s) => s.completed)
+          .map((s) => ({
+            weight: s.weight ?? 0,
+            reps: s.reps ?? 0,
+            rpe: s.rpe ?? null,
+            completed: true,
+            isPR: Boolean(s.isPR),
+          })),
+      })),
+    };
+    fetch("/api/workouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("save failed");
+        invalidateWorkouts(); // next read reflects the DB
+      })
+      .catch(() =>
+        toast({
+          title: "Couldn't save to the server",
+          description: "Your session is still on screen — check your connection.",
+        })
+      );
     workoutRepo
       .recent(20)
       .then((ws) => {
@@ -1030,16 +1077,27 @@ function ExercisePicker({
         equipment,
         difficulty: "Intermediate" as Difficulty,
       });
+      // persist so it survives refresh and appears in the catalog next session
+      fetch("/api/exercises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name, muscle, equipment }),
+      }).catch(() => {});
     }
     onPick(id);
   };
 
+  const favourites = useFavourites();
+  const favSet = useMemo(() => new Set(favourites), [favourites]);
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // favourites float to the top of the picker so common movements are fastest
     return EXERCISES.filter(
       (e) => !exclude.includes(e.id) && (!q || e.name.toLowerCase().includes(q))
-    ).slice(0, 8);
-  }, [query, exclude]);
+    )
+      .sort((a, b) => Number(favSet.has(b.id)) - Number(favSet.has(a.id)))
+      .slice(0, 8);
+  }, [query, exclude, favSet]);
 
   useEffect(() => setSelected(0), [query]);
 
@@ -1116,24 +1174,29 @@ function ExercisePicker({
         {results.map((e, i) => {
           const last = lastPerformance(e.id)?.sets[0];
           return (
-            <button
+            <div
               key={e.id}
-              onClick={() => onPick(e.id)}
               onMouseMove={() => setSelected(i)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-input px-3 py-2.5 text-left transition-colors duration-100",
+                "flex w-full items-center gap-2 rounded-input pr-2 transition-colors duration-100",
                 i === selected ? "bg-ink/[0.07]" : ""
               )}
             >
-              <Dumbbell className="h-4 w-4 shrink-0 text-tertiary" aria-hidden />
-              <span className="flex-1 truncate text-[14px] text-primary">{e.name}</span>
-              <Pill className="hidden sm:inline-flex">{e.muscle}</Pill>
-              {last && (
-                <span className="font-mono text-[11.5px] tabular-nums text-tertiary">
-                  {formatWeight(last.weight)}×{last.reps}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={() => onPick(e.id)}
+                className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
+              >
+                <Dumbbell className="h-4 w-4 shrink-0 text-tertiary" aria-hidden />
+                <span className="flex-1 truncate text-[14px] text-primary">{e.name}</span>
+                <Pill className="hidden sm:inline-flex">{e.muscle}</Pill>
+                {last && (
+                  <span className="font-mono text-[11.5px] tabular-nums text-tertiary">
+                    {formatWeight(last.weight)}×{last.reps}
+                  </span>
+                )}
+              </button>
+              <FavouriteStar exerciseId={e.id} size={15} />
+            </div>
           );
         })}
       </div>

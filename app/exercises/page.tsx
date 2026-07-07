@@ -1,19 +1,21 @@
 "use client";
 
-import { SearchX } from "lucide-react";
+import { SearchX, Star } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Search } from "@/components/ui/input";
 import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Segmented } from "@/components/ui/tabs";
+import { FavouriteStar } from "@/components/favourite-star";
 import { aiSearchNames } from "@/lib/ai/client";
+import { useFavourites } from "@/lib/favourites";
 import { bestE1rm, exerciseRepo } from "@/lib/repo";
 import { EXERCISES } from "@/lib/seed";
 import type { Difficulty, Equipment, Exercise, MuscleGroup } from "@/lib/types";
-import { formatWeight } from "@/lib/utils";
+import { cn, formatWeight } from "@/lib/utils";
 
 const MUSCLES = ["All", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"] as const;
 const EQUIPMENT = ["All", "Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight"] as const;
@@ -34,7 +36,10 @@ function ExercisesView() {
   const [muscle, setMuscle] = useState<(typeof MUSCLES)[number]>("All");
   const [equipment, setEquipment] = useState<(typeof EQUIPMENT)[number]>("All");
   const [difficulty, setDifficulty] = useState<(typeof DIFFICULTY)[number]>("All");
+  const [favsOnly, setFavsOnly] = useState(false);
   const [results, setResults] = useState<Exercise[] | null>(null);
+  const favourites = useFavourites();
+  const favSet = useMemo(() => new Set(favourites), [favourites]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -69,6 +74,15 @@ function ExercisesView() {
     };
   }, [q, muscle, equipment, difficulty]);
 
+  // favourites float to the top; "Favourites only" filters to them
+  const ordered = useMemo(() => {
+    if (!results) return null;
+    const scoped = favsOnly ? results.filter((e) => favSet.has(e.id)) : results;
+    return [...scoped].sort(
+      (a, b) => Number(favSet.has(b.id)) - Number(favSet.has(a.id))
+    );
+  }, [results, favsOnly, favSet]);
+
   return (
     <>
       <header>
@@ -85,27 +99,47 @@ function ExercisesView() {
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-2.5">
+        <button
+          onClick={() => setFavsOnly((v) => !v)}
+          aria-pressed={favsOnly}
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-input border px-3 text-[13px] font-medium transition-colors duration-150",
+            favsOnly
+              ? "border-gold/30 bg-gold/10 text-gold"
+              : "border-line bg-surface text-tertiary hover:text-secondary"
+          )}
+        >
+          <Star className={cn("h-3.5 w-3.5", favsOnly && "fill-current")} aria-hidden />
+          Favourites
+          {favourites.length > 0 && (
+            <span className="font-mono tabular-nums">{favourites.length}</span>
+          )}
+        </button>
         <Segmented options={MUSCLES} value={muscle} onChange={setMuscle} ariaLabel="Filter by muscle" />
         <Segmented options={EQUIPMENT} value={equipment} onChange={setEquipment} ariaLabel="Filter by equipment" />
         <Segmented options={DIFFICULTY} value={difficulty} onChange={setDifficulty} ariaLabel="Filter by difficulty" />
       </div>
 
       <div className="mt-8">
-        {!results ? (
+        {!ordered ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }, (_, i) => (
               <Skeleton key={i} className="h-[190px] rounded-card" />
             ))}
           </div>
-        ) : results.length === 0 ? (
+        ) : ordered.length === 0 ? (
           <EmptyState
-            icon={SearchX}
-            title={`Nothing matches “${q}”`}
-            hint="Try a different movement name, or clear the filters."
+            icon={favsOnly ? Star : SearchX}
+            title={favsOnly ? "No favourites yet" : `Nothing matches “${q}”`}
+            hint={
+              favsOnly
+                ? "Star an exercise to keep it one tap away."
+                : "Try a different movement name, or clear the filters."
+            }
           />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {results.map((e) => {
+            {ordered.map((e) => {
               const best = bestE1rm(e.id);
               return (
                 <Card key={e.id} interactive className="overflow-hidden">
@@ -116,6 +150,7 @@ function ExercisesView() {
                     >
                       {monogram(e.name)}
                     </span>
+                    <FavouriteStar exerciseId={e.id} className="absolute left-3 top-3" />
                     <Pill className="absolute right-3 top-3">{e.difficulty}</Pill>
                   </div>
                   <div className="p-4">

@@ -65,6 +65,24 @@ body {
   color: var(--text-primary);
   font-feature-settings: "cv11", "ss01";
   text-rendering: optimizeLegibility;
+  /* smooth momentum scroll on iOS, no rubber-band chaining into overlays */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* Mobile responsiveness fix: kill the 300ms tap delay + grey tap flash so a
+ * tap fires immediately and can't land on an element that shifted under it. */
+button,
+a,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="option"],
+input,
+label,
+summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {

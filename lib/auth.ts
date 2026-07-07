@@ -1,6 +1,8 @@
+import bcrypt from "bcryptjs";
 import { getServerSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { prisma } from "./db";
 import { DEMO_USER_ID } from "./owner";
 
 const providers: NextAuthOptions["providers"] = [];
@@ -14,17 +16,43 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-// mock-tier entry: one click, a real session with a real user id
+// real email + password, verified against the database (bcrypt)
+providers.push(
+  CredentialsProvider({
+    id: "credentials",
+    name: "Email",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    authorize: async (creds) => {
+      const email = String(creds?.email ?? "").trim().toLowerCase();
+      const password = String(creds?.password ?? "");
+      if (!email || !password) return null;
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user?.passwordHash) return null;
+      const ok = await bcrypt.compare(password, user.passwordHash);
+      if (!ok) return null;
+      return { id: user.id, name: user.name, email: user.email };
+    },
+  })
+);
+
+// one-click demo entry — a real session on the seeded demo account
 providers.push(
   CredentialsProvider({
     id: "demo",
     name: "Demo lifter",
     credentials: {},
-    authorize: async () => ({
-      id: DEMO_USER_ID,
-      name: "Bhargav",
-      email: "demo@ferrum.local",
-    }),
+    authorize: async () => {
+      // ensure the demo row exists even on a fresh database
+      await prisma.user.upsert({
+        where: { id: DEMO_USER_ID },
+        update: {},
+        create: { id: DEMO_USER_ID, email: "demo@ferrum.local", name: "Bhargav" },
+      });
+      return { id: DEMO_USER_ID, name: "Bhargav", email: "demo@ferrum.local" };
+    },
   })
 );
 

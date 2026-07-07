@@ -9,7 +9,7 @@ export interface SavedPlaylist {
   userId: string;
   label: string;
   embedUrl: string;
-  kind: "spotify" | "apple";
+  kind: "spotify" | "apple" | "youtube";
   uri?: string;
   pageUrl?: string;
 }
@@ -142,6 +142,23 @@ export function parsePlaylistUrl(
         kind: "apple",
         embedUrl: `https://embed.music.apple.com${url.pathname}`,
       };
+    }
+    // YouTube: embed the playlist compliantly (no audio-only/background — that
+    // violates the Data API ToS; this is the standard embedded player)
+    if (
+      url.hostname.endsWith("youtube.com") ||
+      url.hostname === "youtu.be" ||
+      url.hostname.endsWith("music.youtube.com")
+    ) {
+      const list = url.searchParams.get("list");
+      if (list)
+        return {
+          label: "YouTube playlist",
+          kind: "youtube",
+          pageUrl: `https://www.youtube.com/playlist?list=${list}`,
+          embedUrl: `https://www.youtube.com/embed/videoseries?list=${list}`,
+        };
+      return null;
     }
     return null;
   } catch {

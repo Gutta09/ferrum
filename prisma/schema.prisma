@@ -1,0 +1,126 @@
+// Ferrum — Postgres via Prisma. Every user-owned row carries userId; the
+// ownership scoping built into the mock layer maps 1:1 onto these foreign keys,
+// so moving off the in-memory store was a data-source swap, not a rewrite.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  // null for OAuth / demo accounts; email+password accounts store a bcrypt hash
+  passwordHash String?
+  createdAt    DateTime @default(now())
+
+  workouts     Workout[]
+  exercises    Exercise[] // user-created custom movements
+  ownedCircles Circle[]        @relation("CircleOwner")
+  memberships  CircleMembership[]
+}
+
+// Custom (user-created) exercises only; the static catalog lives in seed.ts.
+model Exercise {
+  id         String @id
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  muscle     String
+  equipment  String
+  difficulty String
+
+  @@index([userId])
+}
+
+model Workout {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  date        String // ISO yyyy-mm-dd, local day
+  durationMin Int
+  createdAt   DateTime          @default(now())
+  exercises   WorkoutExercise[]
+
+  @@index([userId, date])
+}
+
+model WorkoutExercise {
+  id         String     @id @default(cuid())
+  workoutId  String
+  workout    Workout    @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exerciseId String
+  position   Int
+  notes      String?
+  sets       SetEntry[]
+
+  @@index([workoutId])
+}
+
+model SetEntry {
+  id                String          @id @default(cuid())
+  workoutExerciseId String
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+  position          Int
+  weight            Float
+  reps              Int
+  rpe               Float?
+  completed         Boolean         @default(true)
+  isPR              Boolean         @default(false)
+
+  @@index([workoutExerciseId])
+}
+
+// --- Circles: private, invite-only accountability pods ---
+
+model Circle {
+  id         String   @id @default(cuid())
+  name       String
+  ownerId    String
+  owner      User     @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  inviteCode String   @unique
+  memberCap  Int      @default(8)
+  createdAt  DateTime @default(now())
+
+  members    CircleMembership[]
+  challenges Challenge[]
+}
+
+model CircleMembership {
+  id        String   @id @default(cuid())
+  circleId  String
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // "owner" | "member"
+  joinedAt  DateTime @default(now())
+
+  // privacy-first defaults: consistency + activity type shared, numbers opt-in
+  shareConsistency Boolean @default(true)
+  shareActivity    Boolean @default(true)
+  shareWeights     Boolean @default(false)
+  sharePRs         Boolean @default(false)
+
+  @@unique([circleId, userId])
+  @@index([userId])
+}
+
+// Time-boxed, then it's over — no permanent leaderboard.
+model Challenge {
+  id            String   @id @default(cuid())
+  circleId      String
+  circle        Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  name          String
+  startDate     String // yyyy-mm-dd
+  endDate       String // yyyy-mm-dd
+  targetPerWeek Int      @default(4)
+  createdAt     DateTime @default(now())
+
+  @@index([circleId])
+}
