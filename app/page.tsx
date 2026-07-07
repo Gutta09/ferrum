@@ -11,10 +11,10 @@ import { activeUserId } from "@/lib/owner";
 import { useTemplates } from "@/lib/templates";
 import { Calendar } from "@/components/calendar";
 import { ConsistencyCard } from "@/components/consistency";
+import { PhotoStreakCard } from "@/components/photo-streak";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardLabel } from "@/components/ui/card";
-import { Pill } from "@/components/ui/pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { E1rmLine } from "@/components/charts/e1rm-line";
 import { getExercise, statsRepo, workoutRepo } from "@/lib/repo";
@@ -44,7 +44,6 @@ function greeting() {
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashData | null>(null);
-  const plan = useMemo(() => workoutRepo.todayPlan(), []);
   const templates = useTemplates().filter((t) => t.userId === activeUserId());
   const router = useRouter();
   const { data: authSession, status } = useSession();
@@ -152,17 +151,12 @@ export default function DashboardPage() {
       <Card className="mt-8 p-6 md:p-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center">
           <div className="min-w-0 flex-1">
-            <CardLabel>Today&apos;s workout</CardLabel>
-            <h2 className="mt-2 text-h2 text-primary">{plan.name}</h2>
+            <CardLabel>Today</CardLabel>
+            <h2 className="mt-2 text-h2 text-primary">Build your session</h2>
             <p className="mt-1 text-[13.5px] text-tertiary">
-              {plan.exercises.length} exercises · ~{plan.estimatedMin} min
+              Pick movements from the library, quick-log a line, or start from
+              one of your templates. Nothing is pre-filled for you.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {plan.exercises.map((pe) => {
-                const ex = getExercise(pe.exerciseId);
-                return ex ? <Pill key={pe.exerciseId}>{ex.name}</Pill> : null;
-              })}
-            </div>
           </div>
           <div className="flex shrink-0 flex-col gap-1.5 md:items-end">
             <Link href="/workout">
@@ -197,44 +191,65 @@ export default function DashboardPage() {
       {recap && <p className="mt-4 text-[13px] text-tertiary">{recap}</p>}
 
       {/* stats */}
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {!data ? (
-          Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-[124px] rounded-card" />)
+          Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-[124px] rounded-card" />)
         ) : (
           <>
-            <StatCard
-              label="Top set this week"
-              value={weekBest ? formatWeight(weekBest.w) : "—"}
-              unit={weekBest ? `kg × ${weekBest.r}` : undefined}
-              sub={weekBest ? weekBest.name : "No sets logged yet"}
-            />
-            <StatCard
-              label="Current streak"
-              value={String(data.streak)}
-              unit={data.streak === 1 ? "week" : "weeks"}
-              sub="3+ sessions each week"
-            />
-            <StatCard
-              label="Recent PR"
-              gold
-              value={data.pr ? formatWeight(data.pr.e1rm) : "—"}
-              unit="kg e1RM"
-              sub={
-                data.pr && prExercise
-                  ? `${prExercise.name} · ${formatShort(data.pr.date)}`
-                  : undefined
-              }
-            />
+            <Link href="/history" aria-label="Top set this week — open history">
+              <StatCard
+                label="Top set this week"
+                value={weekBest ? formatWeight(weekBest.w) : "—"}
+                unit={weekBest ? `kg × ${weekBest.r}` : undefined}
+                sub={weekBest ? weekBest.name : "No sets logged yet"}
+              />
+            </Link>
+            <Link href="/profile" aria-label="Current streak — open consistency">
+              <StatCard
+                label="Current streak"
+                value={String(data.streak)}
+                unit={data.streak === 1 ? "week" : "weeks"}
+                sub="3+ sessions each week"
+              />
+            </Link>
+            <Link href="/analytics" aria-label="Recent PR — open analytics">
+              <StatCard
+                label="Recent PR"
+                gold
+                value={data.pr ? formatWeight(data.pr.e1rm) : "—"}
+                unit="kg e1RM"
+                sub={
+                  data.pr && prExercise
+                    ? `${prExercise.name} · ${formatShort(data.pr.date)}`
+                    : undefined
+                }
+              />
+            </Link>
+            <PhotoStreakCard />
           </>
         )}
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-5">
         <Card className="p-5 md:p-6 lg:col-span-2">
-          {data ? <Calendar logged={logged} /> : <Skeleton className="h-[280px]" />}
+          {data ? (
+            <Calendar
+              logged={logged}
+              onDay={(key, isLogged) =>
+                router.push(isLogged ? `/history?d=${key}` : "/workout")
+              }
+            />
+          ) : (
+            <Skeleton className="h-[280px]" />
+          )}
         </Card>
         <Card className="p-5 md:p-6 lg:col-span-3">
-          <CardLabel>Squat e1RM · 8 weeks</CardLabel>
+          <Link
+            href="/analytics"
+            className="transition-colors hover:text-secondary"
+          >
+            <CardLabel>Squat e1RM · 8 weeks →</CardLabel>
+          </Link>
           <div className="mt-4">
             {data ? (
               <E1rmLine points={data.squat} height={220} />
@@ -246,7 +261,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-5">
-        <ConsistencyCard weeks={20} />
+        <ConsistencyCard weeks={26} />
       </div>
     </>
   );

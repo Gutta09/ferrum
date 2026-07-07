@@ -37,7 +37,7 @@ export const Search = forwardRef<HTMLInputElement, SearchProps>(
         {...props}
       />
       {hint && (
-        <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-tertiary">
+        <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line bg-ink/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-tertiary">
           {hint}
         </kbd>
       )}

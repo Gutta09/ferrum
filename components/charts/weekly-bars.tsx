@@ -36,8 +36,8 @@ export function WeeklyBars({
               key={p.weekStart}
               fill={
                 i === points.length - 1
-                  ? "rgba(255,255,255,0.85)"
-                  : "rgba(255,255,255,0.25)"
+                  ? "rgb(var(--ink) / 0.85)"
+                  : "rgb(var(--ink) / 0.28)"
               }
             />
           ))}

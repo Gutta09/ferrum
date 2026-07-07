@@ -9,6 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ink: "rgb(var(--ink) / <alpha-value>)",
         bg: "var(--bg)",
         surface: "var(--surface)",
         card: "var(--card)",

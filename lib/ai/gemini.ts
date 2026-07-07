@@ -140,6 +140,19 @@ export class GeminiProvider implements AIProvider {
     return JSON.parse(raw);
   }
 
+  async analyzeTrends(facts: string[]): Promise<string[]> {
+    const raw = await this.call(
+      [
+        {
+          text: `You are a knowledgeable training partner reading a lifter's stats. Rewrite these facts as 3-5 short, dry, plain-English observations. Use ONLY the numbers present in the facts — never invent, predict, or advise beyond them. No motivational filler, no emojis. Respond with a JSON array of strings only.\n\nFacts:\n${facts.map((f) => `- ${f}`).join("\n")}`,
+        },
+      ],
+      0.3
+    );
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.slice(0, 5).map(String) : [];
+  }
+
   async narratePR(lift: string, weight: number, reps: number, priorBest: number) {
     const line = await this.call(
       [

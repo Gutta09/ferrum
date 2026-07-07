@@ -6,14 +6,14 @@ import { formatKg, formatShort, fromKey } from "@/lib/utils";
 
 // lightness-monotonic emerald ramp (validated), level 0 = rest day
 const LEVELS = [
-  "rgba(255,255,255,0.04)",
-  "#14523C",
-  "#1F7A57",
-  "#2BA372",
-  "#34D399",
+  "var(--heat-0)",
+  "var(--heat-1)",
+  "var(--heat-2)",
+  "var(--heat-3)",
+  "var(--heat-4)",
 ];
 
-const CELL = 12;
+const CELL = 15;
 const GAP = 3;
 
 interface Tip {
@@ -94,7 +94,7 @@ export function Heatmap({ grid }: { grid: HeatmapDay[][] }) {
 
         {tip && (
           <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-input border border-line bg-[#1B1C20] px-3 py-1.5 shadow-ambient"
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-input border border-line bg-card px-3 py-1.5 shadow-ambient"
             style={{ left: tip.left, top: tip.top - 6 }}
             role="status"
           >

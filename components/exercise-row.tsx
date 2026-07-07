@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, StickyNote } from "lucide-react";
+import { Check, HelpCircle, StickyNote } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Menu } from "@/components/ui/menu";
@@ -91,6 +91,7 @@ export function ExerciseRow({
   const lastTop = last?.sets[0];
   const isBarbell = exercise.equipment === "Barbell";
   const [platesFor, setPlatesFor] = useState<string | null>(null);
+  const [rpeHelp, setRpeHelp] = useState(false);
 
   return (
     <Card className="overflow-visible" onFocusCapture={() => onActivity(data.id)}>
@@ -110,7 +111,7 @@ export function ExerciseRow({
             aria-label={data.notesOpen ? "Hide notes" : "Add note"}
             onClick={() => onToggleNotes(data.id, !data.notesOpen)}
             className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-white/[0.06]",
+              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-150 hover:bg-ink/[0.06]",
               data.notesOpen || data.notes
                 ? "text-secondary"
                 : "text-tertiary hover:text-primary"
@@ -156,18 +157,57 @@ export function ExerciseRow({
         </div>
       )}
 
-      <div className={cn(GRID, "border-t border-line px-3 py-2 md:px-4")} aria-hidden>
-        {["Set", "Prev", "kg", "Reps", "RPE", "✓"].map((h) => (
-          <span
-            key={h}
-            className={cn(
-              "text-center text-label uppercase text-tertiary",
-              h === "Prev" && "hidden sm:block"
-            )}
-          >
-            {h}
-          </span>
-        ))}
+      <div className={cn(GRID, "border-t border-line px-3 py-2 md:px-4")}>
+        {["Set", "Prev", "kg", "Reps", "RPE", "✓"].map((h) =>
+          h === "RPE" ? (
+            <span
+              key={h}
+              className="relative flex items-center justify-center gap-1 text-label uppercase text-tertiary"
+            >
+              RPE
+              <button
+                aria-label="What is RPE?"
+                aria-expanded={rpeHelp}
+                onClick={() => setRpeHelp((v) => !v)}
+                onBlur={() => setRpeHelp(false)}
+                className="rounded-full text-tertiary transition-colors hover:text-primary"
+              >
+                <HelpCircle className="h-3 w-3" aria-hidden />
+              </button>
+              {rpeHelp && (
+                <span
+                  role="tooltip"
+                  className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-input border border-line bg-card p-3 text-left normal-case tracking-normal shadow-ambient"
+                >
+                  <span className="block text-[12px] font-medium text-primary">
+                    Rate of Perceived Exertion
+                  </span>
+                  <span className="mt-1 block text-[11.5px] font-normal leading-relaxed text-tertiary">
+                    How hard the set felt, 1–10.
+                  </span>
+                  <span className="mt-2 block font-mono text-[11px] font-normal leading-relaxed tabular-nums text-secondary">
+                    10 · nothing left
+                    <br />9 · 1 rep left
+                    <br />8 · 2 reps left
+                    <br />7 · 3 reps left
+                    <br />6 · 4+ reps left
+                  </span>
+                </span>
+              )}
+            </span>
+          ) : (
+            <span
+              key={h}
+              aria-hidden
+              className={cn(
+                "text-center text-label uppercase text-tertiary",
+                h === "Prev" && "hidden sm:block"
+              )}
+            >
+              {h}
+            </span>
+          )
+        )}
       </div>
 
       <div>
@@ -211,7 +251,7 @@ export function ExerciseRow({
                   "hidden truncate text-center font-mono text-[12px] tabular-nums text-tertiary sm:block",
                   prev &&
                     !set.completed &&
-                    "rounded-md py-1 transition-colors hover:bg-white/[0.04] hover:text-secondary"
+                    "rounded-md py-1 transition-colors hover:bg-ink/[0.04] hover:text-secondary"
                 )}
               >
                 {prev
@@ -293,7 +333,7 @@ export function ExerciseRow({
               </motion.button>
             </div>
             {set.warning && (
-              <div className="flex items-center gap-3 border-t border-line bg-white/[0.02] px-4 py-1.5 md:px-5">
+              <div className="flex items-center gap-3 border-t border-line bg-ink/[0.02] px-4 py-1.5 md:px-5">
                 <span className="flex-1 text-[12px] text-tertiary">{set.warning}</span>
                 <button
                   onClick={() => {
@@ -318,7 +358,7 @@ export function ExerciseRow({
 
       <button
         onClick={() => onAddSet(data.id)}
-        className="flex h-11 w-full items-center gap-2 rounded-b-card border-t border-line px-4 text-[13px] text-tertiary transition-colors duration-150 hover:bg-white/[0.03] hover:text-secondary md:px-5"
+        className="flex h-11 w-full items-center gap-2 rounded-b-card border-t border-line px-4 text-[13px] text-tertiary transition-colors duration-150 hover:bg-ink/[0.03] hover:text-secondary md:px-5"
       >
         + Add set
       </button>

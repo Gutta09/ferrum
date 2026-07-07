@@ -5,9 +5,11 @@ import { useSyncExternalStore } from "react";
 export interface Settings {
   unit: "kg" | "lb";
   barWeight: number; // in the chosen unit
+  /** default rest between sets, seconds */
+  restSeconds: number;
 }
 
-const DEFAULTS: Settings = { unit: "kg", barWeight: 20 };
+const DEFAULTS: Settings = { unit: "kg", barWeight: 20, restSeconds: 120 };
 const KEY = "ferrum:settings";
 
 let settings: Settings = DEFAULTS;

@@ -1,7 +1,8 @@
 "use client";
 
 import { CalendarX } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { WorkoutCard } from "@/components/workout-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Search } from "@/components/ui/input";
@@ -12,8 +13,9 @@ import { getExercise, workoutRepo } from "@/lib/repo";
 import type { Workout } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export default function HistoryPage() {
+function HistoryView() {
   const [workouts, setWorkouts] = useState<Workout[] | null>(null);
+  const day = useSearchParams().get("d");
   const [q, setQ] = useState("");
   const { toast } = useToast();
 
@@ -29,16 +31,17 @@ export default function HistoryPage() {
 
   const filtered = useMemo(() => {
     if (!workouts) return null;
+    const byDay = day ? workouts.filter((w) => w.date === day) : workouts;
     const query = q.trim().toLowerCase();
-    if (!query) return workouts;
-    return workouts.filter(
+    if (!query) return byDay;
+    return byDay.filter(
       (w) =>
         w.name.toLowerCase().includes(query) ||
         w.exercises.some((ex) =>
           getExercise(ex.exerciseId)?.name.toLowerCase().includes(query)
         )
     );
-  }, [workouts, q]);
+  }, [workouts, q, day]);
 
   const rename = (id: string, name: string) => {
     setWorkouts((prev) =>
@@ -91,7 +94,7 @@ export default function HistoryPage() {
                     className={cn(
                       "absolute top-7 h-2.5 w-2.5 rounded-full border-2 border-bg",
                       "-left-[31px] md:-left-[39px]",
-                      hasPR ? "bg-gold" : "bg-white/20"
+                      hasPR ? "bg-gold" : "bg-ink/20"
                     )}
                   />
                   <WorkoutCard
@@ -113,5 +116,13 @@ export default function HistoryPage() {
         )}
       </div>
     </>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <HistoryView />
+    </Suspense>
   );
 }

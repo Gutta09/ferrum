@@ -2,7 +2,7 @@
 // the same interfaces; stats are derived from the log, never stored.
 
 import { activeUserId } from "./owner";
-import { EXERCISES, WORKOUTS, nextProgramDay } from "./seed";
+import { EXERCISES, WORKOUTS } from "./seed";
 import type {
   Difficulty,
   E1rmPoint,
@@ -14,7 +14,6 @@ import type {
   MuscleGroup,
   MuscleShare,
   PersonalRecord,
-  TodayPlan,
   WeekPoint,
   Workout,
 } from "./types";
@@ -45,11 +44,11 @@ export function getExercise(id: string): Exercise | undefined {
 /** Most recent logged sets for an exercise — the ghost data. Sync: the logging
  * screen reads it per-row. */
 export function lastPerformance(exerciseId: string): LastPerformance | undefined {
-  for (let i = WORKOUTS.length - 1; i >= 0; i -= 1) {
-    const we = WORKOUTS[i].exercises.find((x) => x.exerciseId === exerciseId);
+  for (let i = byUser().length - 1; i >= 0; i -= 1) {
+    const we = byUser()[i].exercises.find((x) => x.exerciseId === exerciseId);
     if (we) {
       return {
-        date: WORKOUTS[i].date,
+        date: byUser()[i].date,
         sets: we.sets.map(({ weight, reps, rpe }) => ({ weight, reps, rpe })),
       };
     }
@@ -59,7 +58,7 @@ export function lastPerformance(exerciseId: string): LastPerformance | undefined
 
 export function bestE1rm(exerciseId: string): number {
   let best = 0;
-  for (const w of WORKOUTS) {
+  for (const w of byUser()) {
     const we = w.exercises.find((x) => x.exerciseId === exerciseId);
     if (!we) continue;
     for (const s of we.sets) best = Math.max(best, e1rm(s.weight, s.reps));
@@ -97,25 +96,11 @@ export const exerciseRepo = {
 export const workoutRepo = {
   async list(): Promise<Workout[]> {
     await delay(550); // history shows its skeleton honestly
-    return [...WORKOUTS].reverse();
+    return [...byUser()].reverse();
   },
   async recent(n: number): Promise<Workout[]> {
     await delay(150);
-    return [...WORKOUTS].reverse().slice(0, n);
-  },
-  todayPlan(): TodayPlan {
-    const tpl = nextProgramDay();
-    const ids = [tpl.main[0], ...tpl.accessories.map((a) => a[0])];
-    const setCounts = [tpl.main[1], ...tpl.accessories.map((a) => a[1])];
-    return {
-      name: tpl.name,
-      exercises: ids.map((id, i) => ({
-        exerciseId: id,
-        targetSets: setCounts[i],
-        last: lastPerformance(id),
-      })),
-      estimatedMin: 55,
-    };
+    return [...byUser()].reverse().slice(0, n);
   },
 };
 
@@ -143,7 +128,7 @@ export const statsRepo = {
     await delay(150);
     const currentStart = startOfWeek(new Date());
     const volumeBetween = (from: Date, to: Date) =>
-      WORKOUTS.filter((w) => w.date >= toKey(from) && w.date < toKey(to)).reduce(
+      byUser().filter((w) => w.date >= toKey(from) && w.date < toKey(to)).reduce(
         (s, w) => s + workoutVolume(w),
         0
       );
@@ -182,7 +167,7 @@ export const statsRepo = {
     for (let i = weeks; i >= 1; i -= 1) {
       const ws = addDays(currentStart, -7 * i);
       const we = addDays(ws, 7);
-      const sets = WORKOUTS.filter(
+      const sets = byUser().filter(
         (w) => w.date >= toKey(ws) && w.date < toKey(we)
       ).reduce(
         (s, w) => s + w.exercises.reduce((n, ex) => n + ex.sets.length, 0),
@@ -196,7 +181,7 @@ export const statsRepo = {
   async streakWeeks(): Promise<number> {
     await delay(100);
     const byWeek = new Map<string, number>();
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       const key = toKey(startOfWeek(new Date(w.date + "T12:00")));
       byWeek.set(key, (byWeek.get(key) ?? 0) + 1);
     }
@@ -220,7 +205,7 @@ export const statsRepo = {
   }> {
     await delay(120);
     const byWeek = new Map<string, number>();
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       const key = toKey(startOfWeek(new Date(w.date + "T12:00")));
       byWeek.set(key, (byWeek.get(key) ?? 0) + 1);
     }
@@ -239,14 +224,14 @@ export const statsRepo = {
     return {
       currentWeeks: await this.streakWeeks(),
       longestWeeks: longest,
-      activeDays: WORKOUTS.length,
+      activeDays: byUser().length,
     };
   },
 
   async personalRecords(): Promise<PersonalRecord[]> {
     await delay(200);
     const best = new Map<string, PersonalRecord>();
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       for (const ex of w.exercises) {
         for (const s of ex.sets) {
           if (s.weight === 0) continue;
@@ -282,7 +267,7 @@ export const statsRepo = {
     await delay(120);
     const points: E1rmPoint[] = [];
     let best = 0;
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       const ex = w.exercises.find((x) => x.exerciseId === exerciseId);
       if (!ex) continue;
       let top = 0;
@@ -296,7 +281,7 @@ export const statsRepo = {
 
   async heatmap(weeks = 20): Promise<HeatmapDay[][]> {
     await delay(150);
-    const volumes = new Map(WORKOUTS.map((w) => [w.date, workoutVolume(w)]));
+    const volumes = new Map(byUser().map((w) => [w.date, workoutVolume(w)]));
     const nonzero = [...volumes.values()].sort((a, b) => a - b);
     const q = (p: number) => nonzero[Math.floor(p * (nonzero.length - 1))] ?? 0;
     const t1 = q(0.25);
@@ -324,7 +309,7 @@ export const statsRepo = {
     const cutoff = toKey(addDays(new Date(), -7 * weeksBack));
     const acc = new Map<MuscleGroup, number>();
     let total = 0;
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       if (w.date < cutoff) continue;
       for (const ex of w.exercises) {
         const meta = exerciseById.get(ex.exerciseId);
@@ -346,7 +331,7 @@ export const statsRepo = {
     let prs = 0;
     let minutes = 0;
     const sessions = new Map<string, number>();
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       volume += workoutVolume(w);
       minutes += w.durationMin;
       for (const ex of w.exercises) {
@@ -356,7 +341,7 @@ export const statsRepo = {
       }
     }
     const volumeByExercise = new Map<string, number>();
-    for (const w of WORKOUTS) {
+    for (const w of byUser()) {
       for (const ex of w.exercises) {
         const vol = ex.sets.reduce((s, set) => s + set.weight * set.reps, 0);
         volumeByExercise.set(
@@ -377,7 +362,7 @@ export const statsRepo = {
         return exercise ? [{ exercise, sessions: count }] : [];
       });
     return {
-      workouts: WORKOUTS.length,
+      workouts: byUser().length,
       volume,
       sets,
       prs,

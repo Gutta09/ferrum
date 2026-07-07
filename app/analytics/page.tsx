@@ -10,6 +10,14 @@ import { Card, CardLabel } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Segmented } from "@/components/ui/tabs";
 import { Table, Td, Th } from "@/components/ui/table";
+import { aiInsights } from "@/lib/ai/client";
+import {
+  balanceTakeaway,
+  consistencyTakeaway,
+  e1rmTakeaway,
+  setsTakeaway,
+  volumeTakeaway,
+} from "@/lib/insights";
 import { getExercise, statsRepo } from "@/lib/repo";
 import type {
   E1rmPoint,
@@ -41,6 +49,8 @@ export default function AnalyticsPage() {
   const [prs, setPrs] = useState<PersonalRecord[] | null>(null);
   const [heat, setHeat] = useState<HeatmapDay[][] | null>(null);
   const [balance, setBalance] = useState<MuscleShare[] | null>(null);
+  const [cons, setCons] = useState<{ currentWeeks: number; longestWeeks: number; activeDays: number } | null>(null);
+  const [insights, setInsights] = useState<string[] | null>(null);
 
   const weeks = RANGES[range];
 
@@ -72,17 +82,31 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([statsRepo.personalRecords(), statsRepo.heatmap(20), statsRepo.muscleBalance(4)]).then(
-      ([p, h, b]) => {
-        if (!alive) return;
-        // the table stays on the lifts that matter — barbell movements
-        setPrs(
-          p.filter((pr) => getExercise(pr.exerciseId)?.equipment === "Barbell").slice(0, 6)
-        );
-        setHeat(h);
-        setBalance(b);
-      }
-    );
+    Promise.all([
+      statsRepo.personalRecords(),
+      statsRepo.heatmap(20),
+      statsRepo.muscleBalance(4),
+      statsRepo.consistency(),
+      statsRepo.weeklyVolume(8),
+      ...LIFTS.map((l) => statsRepo.e1rmSeries(l.value)),
+    ]).then(([p, h, b, c, wv, ...bigFour]) => {
+      if (!alive) return;
+      // the table stays on the lifts that matter — barbell movements
+      setPrs(
+        p.filter((pr) => getExercise(pr.exerciseId)?.equipment === "Barbell").slice(0, 6)
+      );
+      setHeat(h);
+      setBalance(b);
+      setCons(c);
+      // deterministic facts first; Gemini only rephrases them
+      const facts = [
+        ...LIFTS.map((l, i) => e1rmTakeaway(l.label, bigFour[i])),
+        volumeTakeaway(wv.points),
+        balanceTakeaway(b),
+        consistencyTakeaway(c),
+      ];
+      aiInsights(facts).then((lines) => alive && setInsights(lines));
+    });
     return () => {
       alive = false;
     };
@@ -108,7 +132,51 @@ export default function AnalyticsPage() {
 
       <div className="mt-8 flex flex-col gap-5">
         <Card className="p-5 md:p-6">
+          <CardLabel>Insights</CardLabel>
+          {insights ? (
+            <div className="mt-3 flex flex-col gap-1.5">
+              {insights.map((line, i) => (
+                <p key={i} className="text-[13.5px] leading-relaxed text-secondary">
+                  {line}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <Skeleton className="mt-3 h-[88px]" />
+          )}
+        </Card>
+
+        {cons && prs && (
+          <div className="grid grid-cols-3 gap-5">
+            {[
+              {
+                label: "Best e1RM",
+                value: prs[0] ? `${formatWeight(prs[0].e1rm)} kg` : "—",
+                gold: true,
+              },
+              { label: "Streak", value: `${cons.currentWeeks}w` },
+              { label: "Active days", value: String(cons.activeDays) },
+            ].map((st) => (
+              <Card key={st.label} className="p-4">
+                <CardLabel>{st.label}</CardLabel>
+                <p
+                  className={
+                    "mt-2 font-mono text-[20px] font-medium tabular-nums " +
+                    (st.gold ? "text-gold" : "text-primary")
+                  }
+                >
+                  {st.value}
+                </p>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <Card className="p-5 md:p-6">
           <CardLabel>Volume over time</CardLabel>
+          {volume && (
+            <p className="mt-1 text-[12.5px] text-secondary">{volumeTakeaway(volume)}</p>
+          )}
           <div className="mt-4">
             {volume ? <VolumeArea points={volume} /> : <Skeleton className="h-[240px]" />}
           </div>
@@ -125,6 +193,11 @@ export default function AnalyticsPage() {
                 ariaLabel="Select lift"
               />
             </div>
+            {e1rmInRange && (
+              <p className="mt-1 text-[12.5px] text-secondary">
+                {e1rmTakeaway(LIFTS.find((l) => l.value === lift)?.label ?? "Lift", e1rmInRange)}
+              </p>
+            )}
             <div className="mt-4">
               {e1rmInRange ? (
                 <E1rmLine points={e1rmInRange} />
@@ -137,6 +210,9 @@ export default function AnalyticsPage() {
 
           <Card className="p-5 md:p-6">
             <CardLabel>Sets per week</CardLabel>
+            {sets && (
+              <p className="mt-1 text-[12.5px] text-secondary">{setsTakeaway(sets)}</p>
+            )}
             <div className="mt-4">
               {sets ? (
                 <WeeklyBars points={sets} format={(v) => `${v} sets`} />
@@ -188,6 +264,9 @@ export default function AnalyticsPage() {
 
           <Card className="p-5 md:p-6">
             <CardLabel>Muscle balance · 4 weeks</CardLabel>
+            {balance && (
+              <p className="mt-1 text-[12.5px] text-secondary">{balanceTakeaway(balance)}</p>
+            )}
             <div className="mt-6">
               {balance ? <MuscleBalance shares={balance} /> : <Skeleton className="h-[240px]" />}
             </div>
@@ -196,6 +275,9 @@ export default function AnalyticsPage() {
 
         <Card className="p-5 md:p-6">
           <CardLabel>Training days · 20 weeks</CardLabel>
+          {cons && (
+            <p className="mt-1 text-[12.5px] text-secondary">{consistencyTakeaway(cons)}</p>
+          )}
           <div className="mt-5">
             {heat ? <Heatmap grid={heat} /> : <Skeleton className="h-[130px]" />}
           </div>

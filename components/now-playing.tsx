@@ -6,74 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { CardLabel } from "@/components/ui/card";
+import {
+  activePlaylist,
+  addPlaylist,
+  parsePlaylistUrl,
+  renamePlaylist,
+  usePlaylistStore,
+} from "@/lib/playlists";
 import { cn } from "@/lib/utils";
-
-const KEY = "ferrum:playlist";
-
-interface Playlist {
-  label: string;
-  embedUrl: string;
-  kind: "spotify" | "apple";
-  /** spotify:playlist:… — feeds the iFrame controller */
-  uri?: string;
-  /** canonical page URL — feeds oEmbed title lookup */
-  pageUrl?: string;
-}
-
-function parsePlaylist(raw: string): Playlist | null {
-  let input = raw.trim();
-  const asUri = input.match(/^spotify:(playlist|album|track):([A-Za-z0-9]+)$/);
-  if (asUri) {
-    return {
-      label: "Gym · Spotify",
-      kind: "spotify",
-      uri: `spotify:${asUri[1]}:${asUri[2]}`,
-      pageUrl: `https://open.spotify.com/${asUri[1]}/${asUri[2]}`,
-      embedUrl: `https://open.spotify.com/embed/${asUri[1]}/${asUri[2]}?theme=0`,
-    };
-  }
-  if (!/^https?:\/\//i.test(input)) input = `https://${input}`;
-  try {
-    const url = new URL(input);
-    if (url.hostname === "open.spotify.com") {
-      const path = url.pathname.replace(/^\/intl-[a-z]+/i, "").replace(/^\/embed/, "");
-      const m = path.match(/^\/(playlist|album|track)\/([A-Za-z0-9]+)/);
-      if (!m) return null;
-      return {
-        label: "Gym · Spotify",
-        kind: "spotify",
-        uri: `spotify:${m[1]}:${m[2]}`,
-        pageUrl: `https://open.spotify.com/${m[1]}/${m[2]}`,
-        embedUrl: `https://open.spotify.com/embed/${m[1]}/${m[2]}?theme=0`,
-      };
-    }
-    if (url.hostname.endsWith("music.apple.com")) {
-      return {
-        label: "Gym · Apple Music",
-        kind: "apple",
-        embedUrl: `https://embed.music.apple.com${url.pathname}`,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/** Legacy stored values predate `kind`/`uri` — upgrade them in place. */
-function readStored(): Playlist | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Playlist;
-    if (parsed.kind) return parsed;
-    const upgraded = parsePlaylist(parsed.embedUrl);
-    if (upgraded) localStorage.setItem(KEY, JSON.stringify(upgraded));
-    return upgraded;
-  } catch {
-    return null;
-  }
-}
 
 // ---- Spotify iFrame API -----------------------------------------------------
 
@@ -125,7 +65,7 @@ function loadSpotifyApi(): Promise<SpotifyIFrameAPI> {
  * iFrame controller: play/pause lives in the pill and on `M`; the embed stays
  * mounted while collapsed so music never cuts out. */
 export function NowPlaying() {
-  const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const playlist = activePlaylist(usePlaylistStore()) ?? null;
   const [expanded, setExpanded] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [draft, setDraft] = useState("");
@@ -137,10 +77,6 @@ export function NowPlaying() {
   const embedRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<SpotifyEmbedController | null>(null);
 
-  useEffect(() => {
-    setPlaylist(readStored());
-  }, []);
-
   // real playlist title via oEmbed — the pill should name the thing playing
   useEffect(() => {
     if (!playlist?.pageUrl || playlist.label.startsWith("Gym ·") === false) {
@@ -151,9 +87,7 @@ export function NowPlaying() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { title?: string } | null) => {
         if (!alive || !data?.title || data.title === playlist.label) return;
-        const next = { ...playlist, label: data.title };
-        localStorage.setItem(KEY, JSON.stringify(next));
-        setPlaylist(next);
+        renamePlaylist(playlist.id, data.title);
       })
       .catch(() => {});
     return () => {
@@ -194,7 +128,8 @@ export function NowPlaying() {
       controllerRef.current = null;
       setControllerReady(false);
     };
-  }, [playlist]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playlist?.id]);
 
   const togglePlay = useCallback(() => {
     controllerRef.current?.togglePlay();
@@ -216,10 +151,9 @@ export function NowPlaying() {
   }, [playlist, togglePlay]);
 
   const connect = () => {
-    const next = parsePlaylist(draft);
+    const next = parsePlaylistUrl(draft);
     if (!next) return setError(true);
-    localStorage.setItem(KEY, JSON.stringify(next));
-    setPlaylist(next);
+    addPlaylist(next);
     setConnecting(false);
     setExpanded(true);
     setDraft("");
@@ -311,7 +245,7 @@ export function NowPlaying() {
           <CardLabel>Gym playlist</CardLabel>
           <p className="mt-2 text-[14px] text-secondary">
             Paste a Spotify or Apple Music playlist link. Spotify gets play/pause
-            on <kbd className="rounded border border-line bg-white/[0.04] px-1 font-mono text-[11px]">M</kbd> —
+            on <kbd className="rounded border border-line bg-ink/[0.04] px-1 font-mono text-[11px]">M</kbd> —
             hands never leave the log.
           </p>
           <Input

@@ -9,13 +9,13 @@ import { cn, formatInt } from "@/lib/utils";
 export function CoinMark({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
-      <circle cx="20" cy="20" r="18.5" fill="none" stroke="#E6B450" strokeWidth="1.5" />
+      <circle cx="20" cy="20" r="18.5" fill="none" stroke="var(--gold)" strokeWidth="1.5" />
       <circle
         cx="20"
         cy="20"
         r="15.5"
         fill="none"
-        stroke="#E6B450"
+        stroke="var(--gold)"
         strokeWidth="0.75"
         strokeDasharray="1.5 2.2"
         opacity="0.7"
@@ -27,7 +27,7 @@ export function CoinMark({ size = 40 }: { size?: number }) {
         fontFamily="var(--font-geist-mono)"
         fontSize="15"
         fontWeight="600"
-        fill="#E6B450"
+        fill="var(--gold)"
       >
         F
       </text>

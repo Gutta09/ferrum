@@ -3,7 +3,13 @@ import { cn, monthYearLabel, toKey } from "@/lib/utils";
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 /** Quiet month view — an emerald dot marks a logged day. */
-export function Calendar({ logged }: { logged: Set<string> }) {
+export function Calendar({
+  logged,
+  onDay,
+}: {
+  logged: Set<string>;
+  onDay?: (key: string, isLogged: boolean) => void;
+}) {
   const now = new Date();
   const first = new Date(now.getFullYear(), now.getMonth(), 1);
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -33,14 +39,25 @@ export function Calendar({ logged }: { logged: Set<string> }) {
           const isToday = key === todayKey;
           const isLogged = logged.has(key);
           const isFuture = key > todayKey;
+          const clickable = Boolean(onDay) && !isFuture;
+          const Tag = clickable ? "button" : "span";
           return (
-            <span
+            <Tag
               key={key}
-              aria-label={isLogged ? `${key}, workout logged` : key}
+              onClick={clickable ? () => onDay?.(key, isLogged) : undefined}
+              aria-label={
+                isLogged
+                  ? `${key}, workout logged — open it`
+                  : clickable
+                    ? `${key}, no workout — start one`
+                    : key
+              }
               className={cn(
                 "mx-auto flex h-9 w-9 flex-col items-center justify-center rounded-lg font-mono text-[13px] tabular-nums",
-                isToday && "border border-line-hover bg-white/[0.04] text-primary",
-                !isToday && (isFuture ? "text-tertiary/60" : "text-secondary")
+                isToday && "border border-line-hover bg-ink/[0.04] text-primary",
+                !isToday && (isFuture ? "text-tertiary/60" : "text-secondary"),
+                clickable &&
+                  "transition-colors duration-150 hover:bg-ink/[0.06] hover:text-primary"
               )}
             >
               {day}
@@ -51,7 +68,7 @@ export function Calendar({ logged }: { logged: Set<string> }) {
                 )}
                 aria-hidden
               />
-            </span>
+            </Tag>
           );
         })}
       </div>

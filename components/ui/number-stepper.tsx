@@ -86,7 +86,7 @@ export function NumberStepper({
         onPointerLeave={endHold}
         onPointerCancel={endHold}
         disabled={disabled}
-        className="absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 touch-none select-none items-center justify-center rounded-md text-tertiary opacity-0 transition-opacity duration-150 hover:bg-white/[0.06] hover:text-primary group-focus-within:opacity-100 group-hover:opacity-100 disabled:hidden sm:h-6 sm:w-6"
+        className="absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 touch-none select-none items-center justify-center rounded-md text-tertiary opacity-0 transition-opacity duration-150 hover:bg-ink/[0.06] hover:text-primary group-focus-within:opacity-100 group-hover:opacity-100 disabled:hidden sm:h-6 sm:w-6"
       >
         <Minus className="h-3 w-3" />
       </button>
@@ -108,7 +108,7 @@ export function NumberStepper({
         onFocus={(e) => e.target.select()}
         className={cn(
           "h-9 w-full rounded-lg bg-transparent text-center font-mono text-[15px] tabular-nums text-primary placeholder:text-tertiary",
-          "transition-colors duration-150 focus:bg-white/[0.05]",
+          "transition-colors duration-150 focus:bg-ink/[0.05]",
           disabled && "opacity-50"
         )}
       />
@@ -121,7 +121,7 @@ export function NumberStepper({
         onPointerLeave={endHold}
         onPointerCancel={endHold}
         disabled={disabled}
-        className="absolute right-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 touch-none select-none items-center justify-center rounded-md text-tertiary opacity-0 transition-opacity duration-150 hover:bg-white/[0.06] hover:text-primary group-focus-within:opacity-100 group-hover:opacity-100 disabled:hidden sm:h-6 sm:w-6"
+        className="absolute right-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 touch-none select-none items-center justify-center rounded-md text-tertiary opacity-0 transition-opacity duration-150 hover:bg-ink/[0.06] hover:text-primary group-focus-within:opacity-100 group-hover:opacity-100 disabled:hidden sm:h-6 sm:w-6"
       >
         <Plus className="h-3 w-3" />
       </button>

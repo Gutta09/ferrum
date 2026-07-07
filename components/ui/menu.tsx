@@ -51,7 +51,7 @@ export function Menu({
         onClick={() => setOpen((o) => !o)}
         className={cn(
           !trigger &&
-            "flex h-8 w-8 items-center justify-center rounded-lg text-tertiary transition-colors duration-150 hover:bg-white/[0.06] hover:text-primary"
+            "flex h-8 w-8 items-center justify-center rounded-lg text-tertiary transition-colors duration-150 hover:bg-ink/[0.06] hover:text-primary"
         )}
       >
         {trigger ?? <MoreHorizontal className="h-4 w-4" aria-hidden />}
@@ -81,7 +81,7 @@ export function Menu({
                   "flex w-full items-center rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors duration-100",
                   item.danger
                     ? "text-danger hover:bg-danger/10"
-                    : "text-secondary hover:bg-white/[0.06] hover:text-primary"
+                    : "text-secondary hover:bg-ink/[0.06] hover:text-primary"
                 )}
               >
                 {item.label}

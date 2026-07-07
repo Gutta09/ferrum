@@ -25,7 +25,7 @@ export function Sparkline({
       <polyline
         points={toStr(pts)}
         fill="none"
-        stroke="rgba(255,255,255,0.22)"
+        stroke="rgb(var(--ink) / 0.25)"
         strokeWidth={1.5}
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -33,11 +33,11 @@ export function Sparkline({
       <polyline
         points={toStr(pts.slice(-2))}
         fill="none"
-        stroke="rgba(255,255,255,0.85)"
+        stroke="rgb(var(--ink) / 0.85)"
         strokeWidth={1.5}
         strokeLinecap="round"
       />
-      <circle cx={last[0]} cy={last[1]} r={2.5} fill="#FFFFFF" stroke="#17181B" strokeWidth={1.5} />
+      <circle cx={last[0]} cy={last[1]} r={2.5} fill="var(--text-primary)" stroke="var(--card)" strokeWidth={1.5} />
     </svg>
   );
 }

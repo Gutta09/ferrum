@@ -8,6 +8,7 @@ import {
   templateRecap,
   templateSummary,
 } from "./fallback";
+import { groundedOnly } from "@/lib/insights";
 import type { ParseResult, SessionFacts, WeekFacts } from "./provider";
 
 async function post<T>(action: string, payload: unknown): Promise<T | null> {
@@ -75,6 +76,17 @@ export async function aiEnrich(
   name: string
 ): Promise<{ muscle: string; equipment: string; cues: string[] } | null> {
   return post("enrich", { name });
+}
+
+/** Fitbit-style read: Gemini rephrases, grounding filter drops any line with
+ * a number that isn't in the deterministic facts. Fallback = the facts. */
+export async function aiInsights(facts: string[]): Promise<string[]> {
+  const lines = await post<string[]>("insights", { facts });
+  if (lines?.length) {
+    const grounded = groundedOnly(lines, facts);
+    if (grounded.length >= 2) return grounded;
+  }
+  return facts;
 }
 
 export async function aiSearchNames(

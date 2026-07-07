@@ -240,6 +240,50 @@ the library until the user taps Add — the user is always the source of truth.
 **Semantic search** fires only when keyword search finds nothing, and returns
 only names that exist in the library.
 
+## Fix & boost pass
+
+**Light mode** is a token mirror, not a second design: `:root[data-theme="light"]`
+overrides every CSS var (bg `#FAFAFA`, white surfaces with stronger borders,
+near-black ink, emerald/gold darkened to `#059669`/`#B45309` for contrast). A new
+`--ink` RGB channel replaces every hard-coded white-alpha utility
+(`bg-ink/[0.06]` etc.), and all chart colors read vars — nothing draws a
+hard-coded hex anymore. Toggle lives in the nav rail, persists to
+`localStorage`, and a pre-hydration script honors `prefers-color-scheme` on
+first load with no flash.
+
+**Manual session timer.** The stopwatch never runs on its own: idle until the
+lifter taps ▶ in the header, pause/resume anytime; Finish freezes it. It is
+separate from the rest timer.
+
+**Custom rest timer.** Global default in Settings (60/90/120/180 presets +
+custom, 15s steps). Mid-rest: pause/resume, +30s, Skip/Space.
+
+**No predefined workouts.** Sessions start empty — the library is a catalog,
+not a plan. Seeded routine templates are gone; templates exist only when a
+user saves one. The demo account's *history* remains (it is that account's own
+log); any fresh account starts at zero workouts, zero templates.
+
+**Daily photo streak.** One photo per calendar day keeps the streak alive;
+the day flips at local midnight and a fully missed day resets the count (no
+grace period — the prompt "Add today's photo" is the grace). Gold, like the
+coin: earned daily, never inflated. Shares the owner-scoped photo store with
+Physique; different framing (daily cadence vs milestone compares).
+
+**Multiple playlists.** Saved per user (name auto-resolved via oEmbed), managed
+in Settings; the active one drives the now-playing pill.
+
+## Analytics — chart + takeaway pattern
+
+Every chart carries one dry sentence stating what it shows ("Squat e1RM up
+7.5 kg across 8 sessions"), computed **deterministically** from the same data
+the chart plots (`lib/insights.ts`) — they work offline and on free-tier
+zero-key installs. The **Insights panel** at the top is the executive summary:
+the deterministic takeaways are the input, `analyzeTrends` (Gemini) only
+*rephrases* them into a Fitbit-style read, and a grounding filter drops any
+returned line containing a number that doesn't appear in the input facts.
+Mismatch or no key → the panel shows the takeaways themselves. Page order:
+insights → headline stats → charts with takeaways.
+
 ## Guardrails (enforced)
 
 No emojis, no gradients, no glow, no gamification. White = one primary action per

@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Flame, Medal, Trophy, type LucideIcon } from "lucide-react";
+import { Clock, Flame, Medal, Trophy, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { ConsistencyCard } from "@/components/consistency";
 import { Physique } from "@/components/physique";
 import { Button } from "@/components/ui/button";
 import { Card, CardLabel } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Menu } from "@/components/ui/menu";
 import { NumberStepper } from "@/components/ui/number-stepper";
 import { Pill } from "@/components/ui/pill";
@@ -17,6 +18,15 @@ import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { exportCSV, exportJSON, importJSON } from "@/lib/export";
 import { activeUserId } from "@/lib/owner";
+import {
+  activePlaylist,
+  addPlaylist,
+  myPlaylists,
+  parsePlaylistUrl,
+  removePlaylist,
+  setActivePlaylist,
+  usePlaylistStore,
+} from "@/lib/playlists";
 import { getExercise, statsRepo } from "@/lib/repo";
 import { PROFILE } from "@/lib/seed";
 import { updateSettings, useSettings } from "@/lib/settings";
@@ -137,7 +147,7 @@ export default function ProfilePage() {
       <div className="mt-10 grid gap-5 lg:grid-cols-2">
         <section aria-label="Favorite exercises">
           <CardLabel>Favorite exercises</CardLabel>
-          <Card className="mt-4 divide-y divide-[rgba(255,255,255,0.06)]">
+          <Card className="mt-4 divide-y divide-line">
             {!stats ? (
               <Skeleton className="m-5 h-[132px]" />
             ) : (
@@ -220,13 +230,13 @@ function TemplateName({ name, onRename }: { name: string; onRename: (n: string) 
         }
       }}
       aria-label="Template name"
-      className="rounded-md bg-white/[0.05] px-1.5 text-[14px] font-medium text-primary focus:outline-none"
+      className="rounded-md bg-ink/[0.05] px-1.5 text-[14px] font-medium text-primary focus:outline-none"
     />
   ) : (
     <button
       onClick={() => setEditing(true)}
       title="Rename template"
-      className="-mx-1.5 truncate rounded-md px-1.5 text-left text-[14px] font-medium text-primary transition-colors hover:bg-white/[0.05]"
+      className="-mx-1.5 truncate rounded-md px-1.5 text-left text-[14px] font-medium text-primary transition-colors hover:bg-ink/[0.05]"
     >
       {draft}
     </button>
@@ -239,7 +249,7 @@ function TemplatesSection() {
   return (
     <section aria-label="Routine templates">
       <CardLabel>Templates</CardLabel>
-      <Card className="mt-4 divide-y divide-[rgba(255,255,255,0.06)]">
+      <Card className="mt-4 divide-y divide-line">
         {templates.length === 0 && (
           <p className="px-5 py-8 text-center text-[13px] text-tertiary">
             Finish a workout and save it as a template.
@@ -284,6 +294,91 @@ function TemplatesSection() {
   );
 }
 
+function PlaylistsRow() {
+  const store = usePlaylistStore();
+  const mine = myPlaylists(store);
+  const activeId = activePlaylist(store)?.id;
+  const [draft, setDraft] = useState("");
+  const [err, setErr] = useState(false);
+
+  const add = () => {
+    const parsed = parsePlaylistUrl(draft);
+    if (!parsed) return setErr(true);
+    addPlaylist(parsed);
+    setDraft("");
+    setErr(false);
+  };
+
+  return (
+    <div className="px-5 py-4">
+      <p className="text-[14px] font-medium text-primary">Playlists</p>
+      <p className="text-[12px] text-tertiary">
+        The active one drives the now-playing pill while you log.
+      </p>
+      {mine.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1">
+          {mine.map((pl) => (
+            <div key={pl.id} className="flex items-center gap-2.5">
+              <button
+                onClick={() => setActivePlaylist(pl.id)}
+                aria-label={`Make ${pl.label} the active playlist`}
+                aria-pressed={pl.id === activeId}
+                className="flex h-7 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-ink/[0.05]"
+              >
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full border",
+                    pl.id === activeId
+                      ? "border-success bg-success"
+                      : "border-line-hover bg-transparent"
+                  )}
+                  aria-hidden
+                />
+                <span
+                  className={cn(
+                    "max-w-[220px] truncate text-[13px]",
+                    pl.id === activeId ? "text-primary" : "text-secondary"
+                  )}
+                >
+                  {pl.label}
+                </span>
+              </button>
+              <button
+                onClick={() => removePlaylist(pl.id)}
+                aria-label={`Remove ${pl.label}`}
+                className="rounded-md p-1 text-tertiary transition-colors hover:text-danger"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 flex gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setErr(false);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder="Spotify or Apple Music link…"
+          aria-label="New playlist URL"
+          className="h-9 flex-1 font-mono text-[12.5px]"
+        />
+        <Button size="sm" className="border border-line" onClick={add}>
+          Add
+        </Button>
+      </div>
+      {err && (
+        <p className="mt-1.5 text-[12px] text-danger">
+          That doesn&apos;t look like a Spotify or Apple Music link.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SettingsSection() {
   const settings = useSettings();
   const { toast } = useToast();
@@ -291,7 +386,29 @@ function SettingsSection() {
   return (
     <section aria-label="Settings">
       <CardLabel>Settings</CardLabel>
-      <Card className="mt-4 divide-y divide-[rgba(255,255,255,0.06)]">
+      <Card className="mt-4 divide-y divide-line">
+        <div className="flex flex-wrap items-center gap-4 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-medium text-primary">Rest timer</p>
+            <p className="text-[12px] text-tertiary">Default seconds between sets</p>
+          </div>
+          <Segmented
+            options={["60", "90", "120", "180"]}
+            value={String(settings.restSeconds)}
+            onChange={(v) => updateSettings({ restSeconds: Number(v) })}
+            ariaLabel="Rest duration presets"
+          />
+          <div className="w-20">
+            <NumberStepper
+              value={settings.restSeconds}
+              step={15}
+              min={15}
+              max={600}
+              ariaLabel="Custom rest seconds"
+              onChange={(v) => updateSettings({ restSeconds: v ?? 120 })}
+            />
+          </div>
+        </div>
         <div className="flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-medium text-primary">Plate math</p>
@@ -312,6 +429,7 @@ function SettingsSection() {
             ariaLabel="Weight unit"
           />
         </div>
+        <PlaylistsRow />
         <div className="flex flex-wrap items-center gap-3 px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-medium text-primary">Your data</p>

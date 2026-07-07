@@ -31,12 +31,12 @@ export function VolumeArea({ points, height = 240 }: { points: WeekPoint[]; heig
         <Area
           type="monotone"
           dataKey="volume"
-          stroke="#FFFFFF"
+          stroke="var(--text-primary)"
           strokeWidth={2}
-          fill="#FFFFFF"
+          fill="var(--text-primary)"
           fillOpacity={0.06}
           dot={false}
-          activeDot={{ r: 4, fill: "#FFFFFF", stroke: "#17181B", strokeWidth: 2 }}
+          activeDot={{ r: 4, fill: "var(--text-primary)", stroke: "var(--card)", strokeWidth: 2 }}
         />
       </AreaChart>
     </ResponsiveContainer>

@@ -62,7 +62,7 @@ export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardPro
                 onClick={() => fileRef.current?.click()}
                 aria-label="Attach a progress photo to this workout"
                 title="Attach progress photo"
-                className="ml-1 rounded-md p-1 text-tertiary transition-colors hover:bg-white/[0.06] hover:text-secondary"
+                className="ml-1 rounded-md p-1 text-tertiary transition-colors hover:bg-ink/[0.06] hover:text-secondary"
               >
                 <ImagePlus className="h-3.5 w-3.5" aria-hidden />
               </button>
@@ -97,14 +97,14 @@ export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardPro
               }
             }}
             aria-label="Workout name"
-            className="rounded-lg bg-white/[0.05] px-2 py-0.5 text-[17px] font-semibold tracking-tight text-primary focus:outline-none"
+            className="rounded-lg bg-ink/[0.05] px-2 py-0.5 text-[17px] font-semibold tracking-tight text-primary focus:outline-none"
           />
         ) : (
           <button
             onClick={onRename ? () => setEditing(true) : undefined}
             className={cn(
               "rounded-lg text-left text-[17px] font-semibold tracking-tight text-primary",
-              onRename && "-mx-2 px-2 py-0.5 transition-colors hover:bg-white/[0.05]"
+              onRename && "-mx-2 px-2 py-0.5 transition-colors hover:bg-ink/[0.05]"
             )}
             title={onRename ? "Rename workout" : undefined}
           >
@@ -114,7 +114,7 @@ export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardPro
         {hasPR && <Pill tone="gold">PR</Pill>}
       </div>
 
-      <div className="mt-4 divide-y divide-[rgba(255,255,255,0.06)]">
+      <div className="mt-4 divide-y divide-line">
         {topSets.map(({ name, set }, i) => (
           <div key={i} className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0">
             <span className="truncate text-[13px] text-secondary">{name}</span>

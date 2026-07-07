@@ -8,9 +8,9 @@ type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
   // white accent — one of these per view, max
-  primary: "bg-white text-black font-medium hover:bg-white/90 active:bg-white/80",
+  primary: "bg-[var(--accent-bg)] text-[var(--accent-fg)] font-medium hover:opacity-90 active:opacity-80",
   ghost:
-    "text-secondary hover:text-primary hover:bg-white/[0.06] active:bg-white/[0.09]",
+    "text-secondary hover:text-primary hover:bg-ink/[0.06] active:bg-ink/[0.09]",
   danger: "text-danger hover:bg-danger/10 active:bg-danger/15",
 };
 

@@ -40,6 +40,9 @@ export interface AIProvider {
   parseWorkoutImage(imageBase64: string, mime: string, exerciseNames: string[]): Promise<ParseResult>;
   enrichCustomExercise(name: string): Promise<{ muscle: string; equipment: string; cues: string[] }>;
   narratePR(lift: string, weight: number, reps: number, priorBest: number): Promise<string>;
+  /** rephrases deterministic takeaways into a short Fitbit-style read;
+   * never introduces numbers that aren't in the input */
+  analyzeTrends(facts: string[]): Promise<string[]>;
 }
 
 /** Server-side only. Returns null when no provider is configured — callers

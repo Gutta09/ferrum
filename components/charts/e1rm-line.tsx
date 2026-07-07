@@ -23,8 +23,8 @@ function PRDot(props: any) {
       cx={cx}
       cy={cy}
       r={4}
-      fill="#E6B450"
-      stroke="#17181B"
+      fill="var(--gold)"
+      stroke="var(--card)"
       strokeWidth={2}
     />
   );
@@ -49,10 +49,10 @@ export function E1rmLine({ points, height = 240 }: { points: E1rmPoint[]; height
         <Line
           type="monotone"
           dataKey="e1rm"
-          stroke="#FFFFFF"
+          stroke="var(--text-primary)"
           strokeWidth={2}
           dot={<PRDot />}
-          activeDot={{ r: 4, fill: "#FFFFFF", stroke: "#17181B", strokeWidth: 2 }}
+          activeDot={{ r: 4, fill: "var(--text-primary)", stroke: "var(--card)", strokeWidth: 2 }}
         />
       </LineChart>
     </ResponsiveContainer>

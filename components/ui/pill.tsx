@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 type Tone = "default" | "success" | "gold" | "danger";
 
 const tones: Record<Tone, string> = {
-  default: "border-line bg-white/[0.04] text-secondary",
+  default: "border-line bg-ink/[0.04] text-secondary",
   success: "border-success/20 bg-success/10 text-success",
   gold: "border-gold/25 bg-gold/10 text-gold",
   danger: "border-danger/20 bg-danger/10 text-danger",

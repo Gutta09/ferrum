@@ -69,7 +69,7 @@ export function Physique() {
               setPicked([]);
             }}
             aria-pressed={compareMode}
-            className={cn(compareMode && "bg-white/[0.08] text-primary")}
+            className={cn(compareMode && "bg-ink/[0.08] text-primary")}
           >
             <Columns2 className="h-3.5 w-3.5" aria-hidden />
             {compareMode ? "Pick two dates" : "Compare"}
@@ -100,7 +100,7 @@ export function Physique() {
               aria-label={`Photo from ${formatShort(p.date)}${compareMode ? ", tap to select for compare" : ""}`}
               className={cn(
                 "group relative aspect-[3/4] overflow-hidden rounded-input border bg-surface transition-colors duration-150",
-                picked.includes(p.id) ? "border-white/40" : "border-line hover:border-line-hover"
+                picked.includes(p.id) ? "border-ink/40" : "border-line hover:border-line-hover"
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -164,7 +164,7 @@ export function Physique() {
                     close();
                   }}
                   aria-label="Delete photo"
-                  className="rounded-input p-2.5 text-tertiary transition-colors hover:bg-white/[0.06] hover:text-danger"
+                  className="rounded-input p-2.5 text-tertiary transition-colors hover:bg-ink/[0.06] hover:text-danger"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -172,7 +172,7 @@ export function Physique() {
               <button
                 onClick={close}
                 aria-label="Close viewer"
-                className="rounded-input p-2.5 text-secondary transition-colors hover:bg-white/[0.06] hover:text-primary"
+                className="rounded-input p-2.5 text-secondary transition-colors hover:bg-ink/[0.06] hover:text-primary"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -205,7 +205,7 @@ export function Physique() {
                   onClick={() => setViewer(Math.max(viewer - 1, 0))}
                   disabled={viewer === 0}
                   aria-label="Previous photo"
-                  className="absolute left-2 rounded-full p-3 text-secondary transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                  className="absolute left-2 rounded-full p-3 text-secondary transition-colors hover:bg-ink/[0.06] disabled:opacity-30"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -213,7 +213,7 @@ export function Physique() {
                   onClick={() => setViewer(Math.min(viewer + 1, photos.length - 1))}
                   disabled={viewer === photos.length - 1}
                   aria-label="Next photo"
-                  className="absolute right-2 rounded-full p-3 text-secondary transition-colors hover:bg-white/[0.06] disabled:opacity-30"
+                  className="absolute right-2 rounded-full p-3 text-secondary transition-colors hover:bg-ink/[0.06] disabled:opacity-30"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>

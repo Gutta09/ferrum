@@ -1,8 +1,7 @@
 // Routine templates: localStorage-backed store, seeded from the program days.
 
 import { useSyncExternalStore } from "react";
-import { activeUserId, assertOwner, DEMO_USER_ID } from "./owner";
-import { PROGRAM } from "./seed";
+import { activeUserId, assertOwner } from "./owner";
 import { uid } from "./utils";
 
 export interface Template {
@@ -14,15 +13,8 @@ export interface Template {
 
 const KEY = "ferrum:templates";
 
-const SEEDS: Template[] = PROGRAM.map((day) => ({
-  id: `tpl-${day.name.toLowerCase().replace(/\s+/g, "-")}`,
-  userId: DEMO_USER_ID,
-  name: day.name,
-  exercises: [
-    { exerciseId: day.main[0], sets: day.main[1] },
-    ...day.accessories.map(([exerciseId, sets]) => ({ exerciseId, sets })),
-  ],
-}));
+// no predefined routines — every template is user-made
+const SEEDS: Template[] = [];
 
 let templates: Template[] = SEEDS;
 let loaded = false;

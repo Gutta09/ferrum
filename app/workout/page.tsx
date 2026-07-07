@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Dumbbell, ScanLine, Search as SearchIcon } from "lucide-react";
+import { Check, Dumbbell, Pause, Play, ScanLine, Search as SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +23,7 @@ import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { bestE1rm, getExercise, lastPerformance, userWorkoutCount, workoutRepo } from "@/lib/repo";
 import { EXERCISES } from "@/lib/seed";
+import { useSettings } from "@/lib/settings";
 import { addTemplate, getTemplate } from "@/lib/templates";
 import { aiEnrich, aiNarratePR, aiParseImage, aiParseSets, aiSummarize } from "@/lib/ai/client";
 import { sanityCheck } from "@/lib/ai/fallback";
@@ -72,22 +73,13 @@ function buildExercise(exerciseId: string, setCount: number): LiveExercise | nul
 
 function WorkoutView() {
   const { toast } = useToast();
-  const plan = useMemo(() => workoutRepo.todayPlan(), []);
   const params = useSearchParams();
   const templateId = params.get("template");
-  const blank = params.get("blank") === "1";
 
-  // deterministic ids for the planned session — uid() would differ between
-  // server and client render and break hydration
-  const [session, setSession] = useState<LiveExercise[]>(() =>
-    blank
-      ? []
-      : plan.exercises.flatMap((pe) => {
-          const ex = buildExercise(pe.exerciseId, pe.targetSets);
-          return ex ? [ex] : [];
-        })
-  );
-  const [sessionName, setSessionName] = useState(blank ? "Blank workout" : plan.name);
+  // no predefined workouts: every session starts empty unless the user
+  // chose one of their own templates
+  const [session, setSession] = useState<LiveExercise[]>([]);
+  const [sessionName, setSessionName] = useState("Today's session");
   // templates can live only in this browser's storage — resolve them client-side
   const [ready, setReady] = useState(!templateId);
   useEffect(() => {
@@ -112,6 +104,9 @@ function WorkoutView() {
   const [lastLogMs, setLastLogMs] = useState<number | null>(null);
   const [finished, setFinished] = useState<Summary | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const elapsedRef = useRef(0);
+  elapsedRef.current = elapsed;
+  const { restSeconds } = useSettings();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -120,7 +115,6 @@ function WorkoutView() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const startRef = useRef<number>(0);
   const activeExRef = useRef<string | null>(null);
   const rowTimerRef = useRef(new Map<string, number>());
   const lastCache = useRef(new Map<string, LastPerformance | undefined>());
@@ -152,13 +146,30 @@ function WorkoutView() {
     [getLast]
   );
 
-  // session clock
+  // session stopwatch: starts only when the user starts it
+  const [timerState, setTimerState] = useState<"idle" | "running" | "paused">("idle");
+  const stopwatchRef = useRef({ base: 0, startedAt: 0 });
   useEffect(() => {
-    startRef.current = Date.now();
+    if (timerState !== "running") return;
     const t = window.setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
-    }, 1000);
+      setElapsed(
+        Math.floor(
+          stopwatchRef.current.base + (Date.now() - stopwatchRef.current.startedAt) / 1000
+        )
+      );
+    }, 500);
     return () => window.clearInterval(t);
+  }, [timerState]);
+  const toggleTimer = useCallback(() => {
+    setTimerState((st) => {
+      if (st === "running") {
+        stopwatchRef.current.base +=
+          (Date.now() - stopwatchRef.current.startedAt) / 1000;
+        return "paused";
+      }
+      stopwatchRef.current.startedAt = Date.now();
+      return "running";
+    });
   }, []);
 
   const bestSet = session
@@ -360,8 +371,9 @@ function WorkoutView() {
           ]
         : [];
     });
-    const seconds = Math.floor((Date.now() - startRef.current) / 1000);
+    const seconds = elapsedRef.current;
     setRestSession(0);
+    setTimerState("paused");
     setFinished({ volume: vol, seconds, setsDone: done, prCount, prs });
     workoutRepo
       .recent(20)
@@ -711,8 +723,32 @@ function WorkoutView() {
               <span className="text-[10px] font-medium uppercase tracking-[0.02em] text-tertiary">
                 Time
               </span>
-              <span className="font-mono text-[15px] tabular-nums text-primary">
-                {formatClock(elapsed)}
+              <span className="flex items-center gap-1.5">
+                <button
+                  onClick={toggleTimer}
+                  aria-label={
+                    timerState === "running"
+                      ? "Pause session timer"
+                      : timerState === "paused"
+                        ? "Resume session timer"
+                        : "Start session timer"
+                  }
+                  className="rounded-md p-0.5 text-tertiary transition-colors hover:text-primary"
+                >
+                  {timerState === "running" ? (
+                    <Pause className="h-3 w-3 fill-current" aria-hidden />
+                  ) : (
+                    <Play className="h-3 w-3 fill-current" aria-hidden />
+                  )}
+                </button>
+                <span
+                  className={cn(
+                    "font-mono text-[15px] tabular-nums",
+                    timerState === "idle" ? "text-tertiary" : "text-primary"
+                  )}
+                >
+                  {formatClock(elapsed)}
+                </span>
               </span>
             </div>
             <div className="flex flex-col items-end">
@@ -743,6 +779,20 @@ function WorkoutView() {
           </div>
         </div>
       </header>
+
+      {session.length === 0 && (
+        <Card className="mb-5 flex flex-col items-center px-6 py-12 text-center">
+          <Dumbbell className="h-5 w-5 text-tertiary" aria-hidden />
+          <p className="mt-3 text-[15px] font-medium text-primary">Build today&apos;s session</p>
+          <p className="mt-1 max-w-sm text-[13px] text-tertiary">
+            Add movements from the library, quick-log a line below, or start
+            from one of your templates.
+          </p>
+          <Button variant="primary" className="mt-5" onClick={() => setPickerOpen(true)}>
+            Add exercise
+          </Button>
+        </Card>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
@@ -800,7 +850,7 @@ function WorkoutView() {
           className="flex h-14 items-center justify-center gap-2 rounded-card border border-dashed border-line text-[14px] text-tertiary transition-colors duration-150 hover:border-line-hover hover:text-secondary [@media(orientation:landscape)_and_(max-height:540px)]:col-span-2"
         >
           Add exercise
-          <kbd className="rounded border border-line bg-white/[0.04] px-1.5 font-mono text-[11px]">
+          <kbd className="rounded border border-line bg-ink/[0.04] px-1.5 font-mono text-[11px]">
             N
           </kbd>
         </button>
@@ -819,7 +869,7 @@ function WorkoutView() {
         </Button>
       </div>
 
-      <RestTimer session={restSession} onDismiss={dismissRest} />
+      <RestTimer session={restSession} seconds={restSeconds} onDismiss={dismissRest} />
       <NowPlaying />
 
       <ExercisePicker
@@ -1072,7 +1122,7 @@ function ExercisePicker({
               onMouseMove={() => setSelected(i)}
               className={cn(
                 "flex w-full items-center gap-3 rounded-input px-3 py-2.5 text-left transition-colors duration-100",
-                i === selected ? "bg-white/[0.07]" : ""
+                i === selected ? "bg-ink/[0.07]" : ""
               )}
             >
               <Dumbbell className="h-4 w-4 shrink-0 text-tertiary" aria-hidden />

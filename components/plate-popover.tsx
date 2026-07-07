@@ -14,7 +14,7 @@ export function PlatePopover({ weight }: { weight?: number }) {
   return (
     <div
       role="status"
-      className="absolute left-1/2 top-full z-30 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-input border border-line bg-[#1B1C20] px-3 py-2 shadow-ambient"
+      className="absolute left-1/2 top-full z-30 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-input border border-line bg-card px-3 py-2 shadow-ambient"
     >
       {load.belowBar ? (
         <span className="text-[11px] text-tertiary">below the {formatWeight(load.bar)} {unit} bar</span>
@@ -26,7 +26,7 @@ export function PlatePopover({ weight }: { weight?: number }) {
             load.perSide.map((p) => (
               <span
                 key={p.plate}
-                className="rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[11.5px] tabular-nums text-primary"
+                className="rounded-md bg-ink/[0.06] px-1.5 py-0.5 font-mono text-[11.5px] tabular-nums text-primary"
               >
                 {p.plate}
                 {p.count > 1 && <span className="text-tertiary">×{p.count}</span>}

@@ -6,13 +6,15 @@ import {
   History,
   Home,
   Library,
+  Moon,
   PanelLeft,
+  Sun,
   User,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CommandPalette } from "@/components/command-palette";
 import { Menu } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +34,16 @@ export function Shell({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const { data: session, status } = useSession();
   const isPublic = pathname === "/" || pathname === "/signin";
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  }, []);
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("ferrum:theme", next);
+  };
 
   return (
     <>
@@ -71,8 +83,8 @@ export function Shell({ children }: { children: ReactNode }) {
                   "group relative flex h-10 items-center rounded-input transition-colors duration-150 ease-swift",
                   expanded ? "gap-3 px-3" : "justify-center",
                   active
-                    ? "bg-white/[0.06] text-primary"
-                    : "text-tertiary hover:bg-white/[0.04] hover:text-secondary"
+                    ? "bg-ink/[0.06] text-primary"
+                    : "text-tertiary hover:bg-ink/[0.04] hover:text-secondary"
                 )}
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
@@ -89,6 +101,25 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="flex flex-col gap-1 px-3 pb-4">
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className={cn(
+              "flex h-10 items-center rounded-input text-tertiary transition-colors duration-150 hover:bg-ink/[0.04] hover:text-secondary",
+              expanded ? "w-full gap-3 px-3" : "w-full justify-center"
+            )}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-[18px] w-[18px]" aria-hidden />
+            ) : (
+              <Moon className="h-[18px] w-[18px]" aria-hidden />
+            )}
+            {expanded && (
+              <span className="text-[13.5px] font-medium">
+                {theme === "dark" ? "Light mode" : "Dark mode"}
+              </span>
+            )}
+          </button>
           {session?.user ? (
             <Menu
               ariaLabel="Account"
@@ -96,7 +127,7 @@ export function Shell({ children }: { children: ReactNode }) {
               trigger={
                 <span
                   className={cn(
-                    "flex h-10 items-center rounded-input text-secondary transition-colors duration-150 hover:bg-white/[0.04] hover:text-primary",
+                    "flex h-10 items-center rounded-input text-secondary transition-colors duration-150 hover:bg-ink/[0.04] hover:text-primary",
                     expanded ? "w-full gap-3 px-2" : "w-10 justify-center"
                   )}
                 >
@@ -117,7 +148,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <Link
                 href="/signin"
                 className={cn(
-                  "flex h-10 items-center rounded-input text-[13px] font-medium text-secondary transition-colors hover:bg-white/[0.04] hover:text-primary",
+                  "flex h-10 items-center rounded-input text-[13px] font-medium text-secondary transition-colors hover:bg-ink/[0.04] hover:text-primary",
                   expanded ? "px-3" : "justify-center"
                 )}
               >
@@ -129,7 +160,7 @@ export function Shell({ children }: { children: ReactNode }) {
             onClick={() => setExpanded((e) => !e)}
             aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
             className={cn(
-              "flex h-10 items-center rounded-input text-tertiary transition-colors duration-150 hover:bg-white/[0.04] hover:text-secondary",
+              "flex h-10 items-center rounded-input text-tertiary transition-colors duration-150 hover:bg-ink/[0.04] hover:text-secondary",
               expanded ? "w-full gap-3 px-3" : "w-full justify-center"
             )}
           >

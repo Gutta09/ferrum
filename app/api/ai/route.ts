@@ -55,6 +55,12 @@ export async function POST(req: Request) {
         return NextResponse.json({
           result: await provider.enrichCustomExercise(String(payload.name).slice(0, 60)),
         });
+      case "insights":
+        return NextResponse.json({
+          result: await provider.analyzeTrends(
+            (payload.facts ?? []).slice(0, 10).map((f: unknown) => String(f).slice(0, 200))
+          ),
+        });
       case "search":
         return NextResponse.json({
           result: await provider.searchExercises(

@@ -150,7 +150,7 @@ export function CommandPalette() {
           aria-label="Command palette search"
           className="h-13 w-full bg-transparent py-4 text-[15px] text-primary placeholder:text-tertiary focus:outline-none"
         />
-        <kbd className="rounded-md border border-line bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-tertiary">
+        <kbd className="rounded-md border border-line bg-ink/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-tertiary">
           esc
         </kbd>
       </div>
@@ -180,7 +180,7 @@ export function CommandPalette() {
                 onMouseMove={() => setSelected(i)}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-input px-3 py-2.5 text-left text-[14px] transition-colors duration-100",
-                  active ? "bg-white/[0.07] text-primary" : "text-secondary"
+                  active ? "bg-ink/[0.07] text-primary" : "text-secondary"
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0 text-tertiary" aria-hidden />
