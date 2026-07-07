@@ -57,7 +57,9 @@ npm run dev                     # http://localhost:3000
 ### Environment
 
 ```bash
-DATABASE_URL="postgresql://USER@HOST:5432/ferrum?schema=public"
+# Supabase gives two strings — pooled (6543) for the app, direct (5432) for migrations
+DATABASE_URL="postgresql://...pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+DIRECT_URL="postgresql://...pooler.supabase.com:5432/postgres"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="run: openssl rand -hex 32"
 # optional
@@ -67,6 +69,8 @@ GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 ```
 
+For plain local Postgres, set `DATABASE_URL` and `DIRECT_URL` to the same URL.
+
 Everything except `DATABASE_URL` and `NEXTAUTH_*` is optional — the app degrades
 gracefully (deterministic AI fallbacks, hidden Google button) when a key is absent.
 
@@ -75,9 +79,10 @@ gracefully (deterministic AI fallbacks, hidden Google button) when a key is abse
 1. **Provision Postgres** — create a free database on [Neon](https://neon.tech) or
    [Supabase](https://supabase.com) and copy its connection string.
 2. **Set env vars in Vercel** → Project → Settings → Environment Variables
-   (Production): `DATABASE_URL` (the Neon/Supabase string), `NEXTAUTH_URL`
-   (your production domain), `NEXTAUTH_SECRET` (a fresh `openssl rand -hex 32`),
-   and optionally `GEMINI_API_KEY` / `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+   (Production): `DATABASE_URL` (Supabase **pooled**, port 6543), `DIRECT_URL`
+   (Supabase **direct**, port 5432), `NEXTAUTH_URL` (your production domain),
+   `NEXTAUTH_SECRET` (a fresh `openssl rand -hex 32`), and optionally
+   `GEMINI_API_KEY` / `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 3. **Run migrations against production**: `DATABASE_URL="<prod url>" npx prisma migrate deploy`
    (or append it to the Vercel build command).
 4. For Google sign-in, add `https://<domain>/api/auth/callback/google` as an
