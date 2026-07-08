@@ -376,8 +376,11 @@ work live; logout clears the session; a fresh signup starts empty. Google OAuth
 is wired but dormant until `GOOGLE_CLIENT_ID/SECRET` are set (the button hides
 itself when absent — correct graceful degradation).
 
-**AI — wired end-to-end, activates on a key.** Every feature makes a *real*
-server-side Gemini call when `GEMINI_API_KEY` is present and falls back to a
+**AI — LIVE on Groq (verified).** Every feature makes a *real* server-side
+model call (Groq `llama-3.3-70b-versatile`, `GROQ_API_KEY` set) — proven by a
+words-only quick-log ("four sets of six ... eighty five kilos") that the regex
+fallback cannot parse, plus the `[ai] … → groq (200)` trace. It also accepts a
+GEMINI_API_KEY and falls back to a
 deterministic path when absent (proven via the `[ai] … → gemini (real call)` /
 `fallback` server trace). Real-model features: quick-log parsing (`parseSets`),
 photo scan (`parseWorkoutImage`), analytics Insights (`analyzeTrends`),
