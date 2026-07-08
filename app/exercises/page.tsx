@@ -162,7 +162,7 @@ function ExercisesView() {
                     </p>
                     {best > 0 && (
                       <p className="mt-3 font-mono text-[12px] tabular-nums text-secondary">
-                        Best e1RM · {formatWeight(best)} kg
+                        Heaviest · {formatWeight(best)} kg
                       </p>
                     )}
                   </div>

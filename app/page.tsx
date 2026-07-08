@@ -16,11 +16,11 @@ import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardLabel } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { E1rmLine } from "@/components/charts/e1rm-line";
+import { VolumeArea } from "@/components/charts/volume-area";
 import { getExercise, statsRepo, workoutRepo } from "@/lib/repo";
 import { e1rm as epley } from "@/lib/utils";
 import { PROFILE } from "@/lib/seed";
-import type { E1rmPoint, PersonalRecord, WeekPoint, Workout } from "@/lib/types";
+import type { PersonalRecord, WeekPoint, Workout } from "@/lib/types";
 import { addDays, formatLong, formatShort, formatWeight, fromKey, toKey } from "@/lib/utils";
 
 interface DashData {
@@ -32,7 +32,6 @@ interface DashData {
   streak: number;
   pr?: PersonalRecord;
   recent: Workout[];
-  squat: E1rmPoint[];
 }
 
 function greeting() {
@@ -56,10 +55,9 @@ export default function DashboardPage() {
       statsRepo.streakWeeks(),
       statsRepo.latestPR(),
       workoutRepo.recent(60),
-      statsRepo.e1rmSeries("back-squat"),
-    ]).then(([weekly, streak, pr, recent, squat]) => {
+    ]).then(([weekly, streak, pr, recent]) => {
       if (!alive) return;
-      setData({ weekly, streak, pr, recent, squat });
+      setData({ weekly, streak, pr, recent });
       const pts = weekly.points;
       const last = pts[pts.length - 1];
       const prev = pts[pts.length - 2];
@@ -218,8 +216,8 @@ export default function DashboardPage() {
               <StatCard
                 label="Recent PR"
                 gold
-                value={data.pr ? formatWeight(data.pr.e1rm) : "—"}
-                unit="kg e1RM"
+                value={data.pr ? formatWeight(data.pr.weight) : "—"}
+                unit={data.pr ? `kg × ${data.pr.reps}` : undefined}
                 sub={
                   data.pr && prExercise
                     ? `${prExercise.name} · ${formatShort(data.pr.date)}`
@@ -250,11 +248,11 @@ export default function DashboardPage() {
             href="/analytics"
             className="transition-colors hover:text-secondary"
           >
-            <CardLabel>Squat e1RM · 8 weeks →</CardLabel>
+            <CardLabel>Weekly volume · 8 weeks →</CardLabel>
           </Link>
           <div className="mt-4">
             {data ? (
-              <E1rmLine points={data.squat} height={220} />
+              <VolumeArea points={data.weekly.points} height={220} />
             ) : (
               <Skeleton className="h-[220px]" />
             )}

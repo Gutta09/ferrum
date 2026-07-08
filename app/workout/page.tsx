@@ -287,7 +287,7 @@ function WorkoutView() {
         toast({
           tone: "gold",
           title: `New PR — ${ex.exercise.name}`,
-          description: `${formatWeight(weight)} kg × ${reps} · e1RM ${formatWeight(est)} kg`,
+          description: `${formatWeight(weight)} kg × ${reps}`,
         });
       }
       setRestSession((r) => r + 1);
