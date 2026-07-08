@@ -1,36 +1,31 @@
-// Ferrum — Postgres via Prisma. Every user-owned row carries userId; the
-// ownership scoping built into the mock layer maps 1:1 onto these foreign keys,
-// so moving off the in-memory store was a data-source swap, not a rewrite.
+// Ferrum — MongoDB (Atlas) via Prisma. Document store; every id maps to _id and
+// user-owned documents carry userId. The ownership scoping built into the app
+// maps onto these the same way it did on Postgres.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  // pooled connection (Supabase pgBouncer, port 6543) — used by the app at runtime
-  url       = env("DATABASE_URL")
-  // direct connection (port 5432) — Prisma Migrate needs a non-pooled link
-  directUrl = env("DIRECT_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String   @id @default(cuid()) @map("_id")
   email        String   @unique
   name         String
-  // null for OAuth / demo accounts; email+password accounts store a bcrypt hash
   passwordHash String?
   createdAt    DateTime @default(now())
 
   workouts     Workout[]
-  exercises    Exercise[] // user-created custom movements
-  ownedCircles Circle[]        @relation("CircleOwner")
+  exercises    Exercise[]
+  ownedCircles Circle[]           @relation("CircleOwner")
   memberships  CircleMembership[]
 }
 
-// Custom (user-created) exercises only; the static catalog lives in seed.ts.
 model Exercise {
-  id         String @id
+  id         String @id @default(cuid()) @map("_id")
   userId     String
   user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
@@ -42,7 +37,7 @@ model Exercise {
 }
 
 model Workout {
-  id          String            @id @default(cuid())
+  id          String            @id @default(cuid()) @map("_id")
   userId      String
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
@@ -55,7 +50,7 @@ model Workout {
 }
 
 model WorkoutExercise {
-  id         String     @id @default(cuid())
+  id         String     @id @default(cuid()) @map("_id")
   workoutId  String
   workout    Workout    @relation(fields: [workoutId], references: [id], onDelete: Cascade)
   exerciseId String
@@ -67,7 +62,7 @@ model WorkoutExercise {
 }
 
 model SetEntry {
-  id                String          @id @default(cuid())
+  id                String          @id @default(cuid()) @map("_id")
   workoutExerciseId String
   workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
   position          Int
@@ -83,7 +78,7 @@ model SetEntry {
 // --- Circles: private, invite-only accountability pods ---
 
 model Circle {
-  id         String   @id @default(cuid())
+  id         String   @id @default(cuid()) @map("_id")
   name       String
   ownerId    String
   owner      User     @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -96,15 +91,14 @@ model Circle {
 }
 
 model CircleMembership {
-  id        String   @id @default(cuid())
-  circleId  String
-  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      String   @default("member") // "owner" | "member"
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid()) @map("_id")
+  circleId String
+  circle   Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
 
-  // privacy-first defaults: consistency + activity type shared, numbers opt-in
   shareConsistency Boolean @default(true)
   shareActivity    Boolean @default(true)
   shareWeights     Boolean @default(false)
@@ -114,14 +108,13 @@ model CircleMembership {
   @@index([userId])
 }
 
-// Time-boxed, then it's over — no permanent leaderboard.
 model Challenge {
-  id            String   @id @default(cuid())
+  id            String   @id @default(cuid()) @map("_id")
   circleId      String
   circle        Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
   name          String
-  startDate     String // yyyy-mm-dd
-  endDate       String // yyyy-mm-dd
+  startDate     String
+  endDate       String
   targetPerWeek Int      @default(4)
   createdAt     DateTime @default(now())
 
