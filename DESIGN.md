@@ -398,6 +398,42 @@ analytics muscle-balance is *derived* from the logged exercises' muscle groups �
 which is more honest than a hand-set label that can disagree with what you
 actually trained. This is deliberate, not a gap.
 
+## Final fix pass — verified state (owner audit, proven by running)
+
+**Persistence — everything durable is now server-side.** Workouts, **progress
+photos** (resized client-side to a ~1000px JPEG and stored in Mongo, owner-scoped
+via `/api/photos`), custom exercises, and **prefs** (favourites / templates /
+playlists via `/api/prefs`) all persist per-user and sync across devices;
+localStorage is only an instant cache. Verified live: a photo survives reload and
+sign-out/in and is invisible to other accounts; a favourite set in one session
+appears in a fresh second session.
+
+**Custom exercises** use **user-scoped ids** (`slug--userId`), not a global slug —
+a global `_id` collided across accounts (MongoDB `_id` is unique), so two people
+naming a lift the same clashed. On load the user's custom exercises hydrate into
+the catalog so names resolve in history/analytics/logging. Verified live.
+
+**Signup never dead-ends.** On a cold serverless start where auto-login doesn't
+establish in time, signup redirects to `/signin?created=1` with a clear
+"Account created — please sign in" notice instead of failing silently.
+
+**Analytics — e1RM removed from the UI.** No estimated-1RM chart, column, stat, or
+label anywhere; the Epley calc survives *only* internally for PR detection and
+set ranking. Every chart has a plain-language deterministic takeaway; a
+"Not enough data yet" empty state replaces misleading charts under two active
+days. The Insights panel makes a **real grounded Groq call** (verified
+`[ai] insights → groq (real call)`) that only rephrases computed facts, with
+deterministic fallback when no key.
+
+**AI — LIVE on Groq.** `llama-3.3-70b-versatile` via `GROQ_API_KEY`. Photo-scan is
+gated behind `aiVision` (Gemini-only) so a text-only Groq tier never implies a
+scan that can't fire. Everything degrades deterministically without a key.
+
+**Photos storage note (deliberate).** Photos live as compressed data URLs in
+Mongo — zero extra infra, owner-scoped by nature, fine for this scale. If photo
+volume ever grows, swap `/api/photos` to a blob store (Vercel Blob / S3); the
+client contract doesn't change.
+
 ## Guardrails (enforced)
 
 No emojis, no gradients, no glow, no gamification. White = one primary action per
