@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import { DB_ENABLED, prisma } from "@/lib/db";
+import { collections, DB_ENABLED, ensureIndexes, newId } from "@/lib/mongo";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -44,13 +44,15 @@ export async function POST(req: Request) {
   if (password.length < 8)
     return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  await ensureIndexes();
+  const { users } = await collections();
+  const existing = await users.findOne({ email });
   if (existing)
     return NextResponse.json({ error: "That email already has an account." }, { status: 409 });
 
   // never store plaintext — bcrypt with a per-password salt
   const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.user.create({ data: { email, name, passwordHash } });
+  await users.insertOne({ _id: newId("u"), email, name, passwordHash, createdAt: new Date() });
   // a fresh account starts with an empty, owner-scoped log — no seed data
   return NextResponse.json({ ok: true });
 }

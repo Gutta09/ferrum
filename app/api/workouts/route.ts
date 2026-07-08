@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { DB_ENABLED } from "@/lib/db";
+import { DEMO_USER_ID } from "@/lib/owner";
 import { WORKOUTS } from "@/lib/seed";
 import { requireUserId, UnauthorizedError } from "@/lib/server/session";
 import {
@@ -27,6 +28,8 @@ export async function POST(req: Request) {
   if (!DB_ENABLED) return NextResponse.json({ id: "demo", demo: true });
   try {
     const userId = await requireUserId();
+    // the demo showcase is read-only seed — don't persist its sessions
+    if (userId === DEMO_USER_ID) return NextResponse.json({ id: "demo", demo: true });
     const body = await req.json();
     const input = validateWorkout(body);
     const saved = await saveWorkout(userId, input);

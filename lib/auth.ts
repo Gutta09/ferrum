@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { getServerSession, type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { DB_ENABLED, prisma } from "./db";
+import { collections, DB_ENABLED } from "./mongo";
 import { DEMO_USER_ID } from "./owner";
 
 const providers: NextAuthOptions["providers"] = [];
@@ -30,11 +30,12 @@ providers.push(
       const email = String(creds?.email ?? "").trim().toLowerCase();
       const password = String(creds?.password ?? "");
       if (!email || !password) return null;
-      const user = await prisma.user.findUnique({ where: { email } });
+      const { users } = await collections();
+      const user = await users.findOne({ email });
       if (!user?.passwordHash) return null;
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return null;
-      return { id: user.id, name: user.name, email: user.email };
+      return { id: user._id, name: user.name, email: user.email };
     },
   })
 );
@@ -45,18 +46,9 @@ providers.push(
     id: "demo",
     name: "Demo lifter",
     credentials: {},
-    authorize: async () => {
-      // ensure the demo row exists when a database is configured; in demo mode
-      // there's no DB, so just hand back the demo identity
-      if (DB_ENABLED) {
-        await prisma.user.upsert({
-          where: { id: DEMO_USER_ID },
-          update: {},
-          create: { id: DEMO_USER_ID, email: "demo@ferrum.local", name: "Bhargav" },
-        });
-      }
-      return { id: DEMO_USER_ID, name: "Bhargav", email: "demo@ferrum.local" };
-    },
+    // the demo account is a pure seed showcase — no database touched, so it
+    // always works even if the DB is unreachable
+    authorize: async () => ({ id: DEMO_USER_ID, name: "Bhargav", email: "demo@ferrum.local" }),
   })
 );
 
