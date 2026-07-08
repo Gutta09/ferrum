@@ -16,13 +16,12 @@ const ERRORS: Record<string, string> = {
   Default: "Sign-in failed. Try again.",
 };
 
-// set when the site is deployed without a database — accounts are unavailable,
-// so we show only the one-click demo entry
-const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "1";
-
 function SignInView() {
   const params = useSearchParams();
   const [hasGoogle, setHasGoogle] = useState(false);
+  // auto-detected from the server: real accounts appear the moment a database
+  // is connected, with no env flag to flip. Assume no DB until we hear back.
+  const [dbEnabled, setDbEnabled] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +33,14 @@ function SignInView() {
 
   useEffect(() => {
     getProviders().then((p) => setHasGoogle(Boolean(p?.google)));
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d) => setDbEnabled(Boolean(d.dbEnabled)))
+      .catch(() => setDbEnabled(false));
   }, []);
+  // until we know, don't flash an email form that may vanish — the demo button
+  // is always available regardless
+  const DEMO_MODE = dbEnabled !== true;
 
   const submitCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
