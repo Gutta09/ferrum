@@ -6,6 +6,8 @@ import type { AIProvider, ParseResult, SessionFacts, WeekFacts } from "./provide
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+// Groq's vision-capable model — reads a whiteboard / written log photo
+const VISION_MODEL = process.env.GROQ_VISION_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct";
 
 interface Msg {
   role: "system" | "user";
@@ -71,9 +73,38 @@ export class GroqProvider implements AIProvider {
     return this.validateParse(raw);
   }
 
-  // Groq's free tier is text-only here — image parsing falls back to manual entry.
-  async parseWorkoutImage(): Promise<ParseResult> {
-    return { sets: [], needsClarification: true };
+  async parseWorkoutImage(
+    imageBase64: string,
+    mime: string,
+    exerciseNames: string[]
+  ): Promise<ParseResult> {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: VISION_MODEL,
+        temperature: 0,
+        max_tokens: 512,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Read the sets written in this photo of a workout log or whiteboard. Extract ONLY what is legible — never guess. Weights are kg unless lb is written. Known exercises: ${exerciseNames.join(", ")}. Respond with JSON ONLY: {"exercise": string|null, "sets": [{"weight": number, "reps": number, "rpe": number|null}], "needsClarification": boolean}. Set needsClarification true if anything is unclear.`,
+              },
+              { type: "image_url", image_url: { url: `data:${mime};base64,${imageBase64}` } },
+            ],
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(15000), // vision is slower than text
+    });
+    if (!res.ok) throw new Error(`groq vision ${res.status}`);
+    const data = await res.json();
+    const text: string | undefined = data?.choices?.[0]?.message?.content;
+    if (!text) throw new Error("groq vision empty");
+    return this.validateParse(text.replace(/```json|```/g, "").trim());
   }
 
   async summarizeSession(f: SessionFacts): Promise<string> {

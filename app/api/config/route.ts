@@ -11,8 +11,8 @@ export function GET() {
   return NextResponse.json({
     dbEnabled: DB_ENABLED,
     aiEnabled: aiConfigured(),
-    // only Gemini does image parsing; Groq's free tier is text-only, so the
-    // photo-scan affordance is hidden unless a vision-capable key is present
-    aiVision: Boolean(process.env.GEMINI_API_KEY),
+    // photo-scan needs a vision-capable model: Groq (Llama 4 Scout) or Gemini.
+    // Hidden only when neither key is present.
+    aiVision: Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY),
   });
 }
