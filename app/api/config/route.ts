@@ -8,5 +8,11 @@ import { aiConfigured } from "@/lib/ai/provider";
 export const dynamic = "force-dynamic";
 
 export function GET() {
-  return NextResponse.json({ dbEnabled: DB_ENABLED, aiEnabled: aiConfigured() });
+  return NextResponse.json({
+    dbEnabled: DB_ENABLED,
+    aiEnabled: aiConfigured(),
+    // only Gemini does image parsing; Groq's free tier is text-only, so the
+    // photo-scan affordance is hidden unless a vision-capable key is present
+    aiVision: Boolean(process.env.GEMINI_API_KEY),
+  });
 }

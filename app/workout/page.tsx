@@ -25,7 +25,7 @@ import { useToast } from "@/components/ui/toast";
 import { bestE1rm, getExercise, lastPerformance, userWorkoutCount, workoutRepo } from "@/lib/repo";
 import { ensureWorkouts, invalidateWorkouts } from "@/lib/workout-cache";
 import { EXERCISES } from "@/lib/seed";
-import { activeUserId } from "@/lib/owner";
+import { activeUserId, DEMO_USER_ID } from "@/lib/owner";
 import { useSettings } from "@/lib/settings";
 import { useFavourites } from "@/lib/favourites";
 import { addTemplate, getTemplate } from "@/lib/templates";
@@ -121,11 +121,21 @@ function WorkoutView() {
   elapsedRef.current = elapsed;
   const { restSeconds } = useSettings();
   const [scrolled, setScrolled] = useState(false);
+  const [visionOn, setVisionOn] = useState(false);
+  const isDemo = activeUserId() === DEMO_USER_ID;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 64);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    // only show photo-scan when a vision-capable AI is configured
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d) => setVisionOn(Boolean(d.aiVision)))
+      .catch(() => {});
   }, []);
 
   const activeExRef = useRef<string | null>(null);
@@ -828,6 +838,12 @@ function WorkoutView() {
         </div>
       </header>
 
+      {isDemo && (
+        <p className="mb-4 rounded-input border border-line bg-card px-3 py-2 text-center text-[12.5px] text-tertiary">
+          Demo mode — explore freely; workouts logged here aren&apos;t saved.
+        </p>
+      )}
+
       {session.length === 0 && (
         <Card className="mb-5 flex flex-col items-center px-6 py-12 text-center">
           <Dumbbell className="h-5 w-5 text-tertiary" aria-hidden />
@@ -849,16 +865,18 @@ function WorkoutView() {
             onParsed={stageParsed}
           />
         </div>
-        <ScanButton
-          exerciseNames={session.map((e) => e.exercise.name)}
-          onParsed={stageParsed}
-          onFail={() =>
-            toast({
-              title: "Couldn't read the photo",
-              description: "Enter the sets manually — nothing was guessed.",
-            })
-          }
-        />
+        {visionOn && (
+          <ScanButton
+            exerciseNames={session.map((e) => e.exercise.name)}
+            onParsed={stageParsed}
+            onFail={() =>
+              toast({
+                title: "Couldn't read the photo",
+                description: "Enter the sets manually — nothing was guessed.",
+              })
+            }
+          />
+        )}
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 [@media(orientation:landscape)_and_(max-height:540px)]:grid-cols-2">
@@ -893,15 +911,19 @@ function WorkoutView() {
           />
         ))}
 
-        <button
-          onClick={() => setPickerOpen(true)}
-          className="flex h-14 items-center justify-center gap-2 rounded-card border border-dashed border-line text-[14px] text-tertiary transition-colors duration-150 hover:border-line-hover hover:text-secondary [@media(orientation:landscape)_and_(max-height:540px)]:col-span-2"
-        >
-          Add exercise
-          <kbd className="rounded border border-line bg-ink/[0.04] px-1.5 font-mono text-[11px]">
-            N
-          </kbd>
-        </button>
+        {/* the empty-state card already offers "Add exercise"; only show this
+            persistent add affordance once the session has movements */}
+        {session.length > 0 && (
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="flex h-14 items-center justify-center gap-2 rounded-card border border-dashed border-line text-[14px] text-tertiary transition-colors duration-150 hover:border-line-hover hover:text-secondary [@media(orientation:landscape)_and_(max-height:540px)]:col-span-2"
+          >
+            Add exercise
+            <kbd className="rounded border border-line bg-ink/[0.04] px-1.5 font-mono text-[11px]">
+              N
+            </kbd>
+          </button>
+        )}
       </div>
 
       {/* thumb-zone action bar — primary actions live in the bottom third */}
