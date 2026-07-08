@@ -153,6 +153,18 @@ export class GeminiProvider implements AIProvider {
     return Array.isArray(arr) ? arr.slice(0, 5).map(String) : [];
   }
 
+  async summarizeCircle(facts: string[]): Promise<string> {
+    const line = await this.call(
+      [
+        {
+          text: `Write ONE dry, factual sentence summarizing a private training group's week for its members. Use ONLY these facts — no ranking, no motivation, no emojis, no "keep it up". Facts:\n${facts.map((f) => `- ${f}`).join("\n")}`,
+        },
+      ],
+      0.3
+    );
+    return line.split("\n")[0].slice(0, 200);
+  }
+
   async narratePR(lift: string, weight: number, reps: number, priorBest: number) {
     const line = await this.call(
       [

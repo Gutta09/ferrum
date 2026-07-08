@@ -13,5 +13,6 @@ export const config = {
     "/profile/:path*",
     "/analytics/:path*",
     "/exercises/:path*",
+    "/circles/:path*",
   ],
 };

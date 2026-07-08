@@ -43,6 +43,9 @@ export interface AIProvider {
   /** rephrases deterministic takeaways into a short Fitbit-style read;
    * never introduces numbers that aren't in the input */
   analyzeTrends(facts: string[]): Promise<string[]>;
+  /** one dry factual line summarizing a training circle's week, grounded in
+   * the provided facts only — no ranking or motivation language */
+  summarizeCircle(facts: string[]): Promise<string>;
 }
 
 /** Server-side only. Returns null when no provider is configured — callers

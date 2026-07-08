@@ -10,6 +10,7 @@ import {
   PanelLeft,
   Sun,
   User,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,7 +27,17 @@ const NAV = [
   { href: "/exercises", label: "Exercises", icon: Library },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/history", label: "History", icon: History },
+  { href: "/circles", label: "Circles", icon: Users },
   { href: "/profile", label: "Profile", icon: User },
+] as const;
+
+// curated 5 for the mobile bottom bar (Exercises → via search/⌘K, Profile → avatar)
+const MOBILE_NAV = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/workout", label: "Workout", icon: Dumbbell },
+  { href: "/history", label: "History", icon: History },
+  { href: "/circles", label: "Circles", icon: Users },
+  { href: "/analytics", label: "Stats", icon: BarChart3 },
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -175,7 +186,7 @@ export function Shell({ children }: { children: ReactNode }) {
         aria-label="Primary"
         className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        {NAV.slice(0, 5).map(({ href, label, icon: Icon }) => {
+        {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link

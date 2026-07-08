@@ -95,3 +95,19 @@ export async function aiSearchNames(
 ): Promise<string[] | null> {
   return post<string[]>("search", { query, names });
 }
+
+/** Weekly circle digest: Gemini rephrases the deterministic facts; if the line
+ * introduces a number not in the facts, or there's no key, fall back to the
+ * facts joined into a sentence. Grounded-or-silent. */
+export async function aiCircleDigest(facts: string[]): Promise<string> {
+  if (!facts.length) return "";
+  const line = await post<string>("circle-digest", { facts });
+  if (line) {
+    const allowed = new Set(
+      facts.flatMap((f) => (f.match(/\d+(?:\.\d+)?/g) ?? []).map(Number))
+    );
+    const ok = (line.match(/\d+(?:\.\d+)?/g) ?? []).every((n) => allowed.has(Number(n)));
+    if (ok) return line;
+  }
+  return facts.join(" ");
+}

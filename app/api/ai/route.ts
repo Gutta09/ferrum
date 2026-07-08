@@ -61,6 +61,12 @@ export async function POST(req: Request) {
             (payload.facts ?? []).slice(0, 10).map((f: unknown) => String(f).slice(0, 200))
           ),
         });
+      case "circle-digest":
+        return NextResponse.json({
+          result: await provider.summarizeCircle(
+            (payload.facts ?? []).slice(0, 6).map((f: unknown) => String(f).slice(0, 200))
+          ),
+        });
       case "search":
         return NextResponse.json({
           result: await provider.searchExercises(
