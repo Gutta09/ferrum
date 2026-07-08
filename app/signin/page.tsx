@@ -30,6 +30,10 @@ function SignInView() {
   const [error, setError] = useState<string | null>(
     params.get("error") ? ERRORS[params.get("error")!] ?? ERRORS.Default : null
   );
+  // came back from a signup whose auto-login didn't complete (cold start)
+  const [notice, setNotice] = useState<string | null>(
+    params.get("created") === "1" ? "Account created — please sign in." : null
+  );
 
   useEffect(() => {
     getProviders().then((p) => setHasGoogle(Boolean(p?.google)));
@@ -45,9 +49,11 @@ function SignInView() {
   const submitCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setPending("credentials");
+    const signingUp = mode === "signup";
     try {
-      if (mode === "signup") {
+      if (signingUp) {
         const res = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -60,18 +66,26 @@ function SignInView() {
           return;
         }
       }
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      if (result?.error) {
-        setError(ERRORS.CredentialsSignin);
-        setPending(null);
+      const result = await signIn("credentials", { email, password, redirect: false });
+      if (result?.ok && !result?.error) {
+        window.location.href = "/";
         return;
       }
-      window.location.href = "/";
+      // auto-login didn't establish (common on a cold serverless start). Never
+      // dead-end: a just-created account is redirected to a clear sign-in prompt;
+      // an existing account sees the wrong-credentials error.
+      if (signingUp) {
+        window.location.href = "/signin?created=1";
+        return;
+      }
+      setError(ERRORS.CredentialsSignin);
+      setPending(null);
     } catch {
+      if (signingUp) {
+        // the account was created before the throw — send them to sign in
+        window.location.href = "/signin?created=1";
+        return;
+      }
       setError("Something went wrong. Try again.");
       setPending(null);
     }
@@ -93,6 +107,14 @@ function SignInView() {
           className="mt-4 w-full rounded-input border border-danger/25 bg-danger/10 px-4 py-2.5 text-[13px] text-danger"
         >
           {error}
+        </p>
+      )}
+      {notice && !error && (
+        <p
+          role="status"
+          className="mt-4 w-full rounded-input border border-success/25 bg-success/10 px-4 py-2.5 text-[13px] text-success"
+        >
+          {notice}
         </p>
       )}
 

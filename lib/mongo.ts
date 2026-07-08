@@ -112,6 +112,22 @@ export interface ChallengeDoc {
   targetPerWeek: number;
   createdAt: Date;
 }
+export interface PhotoDoc {
+  _id: string;
+  userId: string;
+  date: string;
+  dataUrl: string; // resized JPEG data URL (client-compressed)
+  workoutId?: string;
+  createdAt: Date;
+}
+export interface PrefDoc {
+  // one document per user holding their client-side prefs (favourites,
+  // templates, playlists) so they sync across devices
+  _id: string; // = userId
+  favourites?: string[];
+  templates?: unknown[];
+  playlists?: { list: unknown[]; activeId?: string };
+}
 
 export async function collections() {
   const database = await db();
@@ -122,6 +138,8 @@ export async function collections() {
     circles: database.collection<CircleDoc>("circles"),
     memberships: database.collection<MembershipDoc>("memberships"),
     challenges: database.collection<ChallengeDoc>("challenges"),
+    photos: database.collection<PhotoDoc>("photos"),
+    prefs: database.collection<PrefDoc>("prefs"),
   };
 }
 
@@ -139,6 +157,7 @@ export async function ensureIndexes() {
     c.memberships.createIndex({ circleId: 1, userId: 1 }, { unique: true }),
     c.memberships.createIndex({ userId: 1 }),
     c.challenges.createIndex({ circleId: 1 }),
+    c.photos.createIndex({ userId: 1, date: 1 }),
   ]).catch(() => {});
 }
 

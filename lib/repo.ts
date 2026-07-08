@@ -43,6 +43,38 @@ export function getExercise(id: string): Exercise | undefined {
   return hit;
 }
 
+let hydrateP: Promise<void> | null = null;
+/** Merge the signed-in user's custom exercises into the catalog so their names
+ * resolve everywhere (history, analytics, logging) after a reload. Deduped via a
+ * shared promise so every awaiter waits for the SAME fetch to finish. */
+export function hydrateCustomExercises(): Promise<void> {
+  if (!hydrateP) {
+    hydrateP = (async () => {
+      try {
+        const r = await fetch("/api/exercises", { cache: "no-store" });
+        if (!r.ok) return;
+        const { exercises } = await r.json();
+        for (const e of exercises ?? []) {
+          const id = e._id ?? e.id;
+          if (!id || exerciseById.has(id)) continue;
+          const ex = {
+            id,
+            name: e.name,
+            muscle: e.muscle,
+            equipment: e.equipment,
+            difficulty: e.difficulty,
+          } as Exercise;
+          EXERCISES.push(ex);
+          exerciseById.set(id, ex);
+        }
+      } catch {
+        /* non-fatal — names just fall back to the slug until next load */
+      }
+    })();
+  }
+  return hydrateP;
+}
+
 /** Most recent logged sets for an exercise — the ghost data. Sync: the logging
  * screen reads it per-row. */
 export function lastPerformance(exerciseId: string): LastPerformance | undefined {
@@ -97,11 +129,12 @@ export const exerciseRepo = {
 
 export const workoutRepo = {
   async list(): Promise<Workout[]> {
-    await ensureWorkouts();
+    // resolve custom-exercise names before the list renders
+    await Promise.all([ensureWorkouts(), hydrateCustomExercises()]);
     return [...byUser()].reverse();
   },
   async recent(n: number): Promise<Workout[]> {
-    await ensureWorkouts();
+    await Promise.all([ensureWorkouts(), hydrateCustomExercises()]);
     return [...byUser()].reverse().slice(0, n);
   },
 };

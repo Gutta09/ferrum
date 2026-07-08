@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/toast";
 import { bestE1rm, getExercise, lastPerformance, userWorkoutCount, workoutRepo } from "@/lib/repo";
 import { ensureWorkouts, invalidateWorkouts } from "@/lib/workout-cache";
 import { EXERCISES } from "@/lib/seed";
+import { activeUserId } from "@/lib/owner";
 import { useSettings } from "@/lib/settings";
 import { useFavourites } from "@/lib/favourites";
 import { addTemplate, getTemplate } from "@/lib/templates";
@@ -1068,7 +1069,10 @@ function ExercisePicker({
   const confirmCreate = () => {
     const name = query.trim();
     if (!name) return;
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    // scope the id to the user — a global slug would collide across accounts
+    // (MongoDB _id is unique), so two people naming a lift the same would clash
+    const id = `${slug}--${activeUserId()}`;
     if (!EXERCISES.some((e) => e.id === id)) {
       EXERCISES.push({
         id,
