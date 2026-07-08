@@ -12,7 +12,10 @@ const globalForMongo = globalThis as unknown as { _mongo?: Promise<MongoClient> 
 function connect(): Promise<MongoClient> {
   const uri = process.env.DATABASE_URL!;
   const client = new MongoClient(uri, {
-    serverSelectionTimeoutMS: 8000,
+    // generous enough that a cold serverless start (first TLS handshake to
+    // Atlas can take a few seconds) never times out
+    serverSelectionTimeoutMS: 15000,
+    connectTimeoutMS: 15000,
     retryWrites: true,
   });
   return client.connect();
