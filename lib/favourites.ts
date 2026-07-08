@@ -3,6 +3,7 @@
 
 import { useSyncExternalStore } from "react";
 import { activeUserId } from "./owner";
+import { loadPrefs, pushPref } from "./prefs-client";
 
 const KEY = "ferrum:favourites";
 
@@ -34,9 +35,24 @@ function subscribe(l: () => void) {
 
 const EMPTY: string[] = [];
 
+// hydrate from the server once per user so favourites sync across devices
+const hydrated = new Set<string>();
+function hydrate() {
+  const uid = activeUserId();
+  if (hydrated.has(uid)) return;
+  hydrated.add(uid);
+  loadPrefs().then((p) => {
+    if (Array.isArray(p.favourites) && p.favourites.length) {
+      store = { ...store, [uid]: p.favourites };
+      persist();
+    }
+  });
+}
+
 /** The active user's favourite exercise ids (stable reference between changes). */
 export function useFavourites(): string[] {
   load();
+  hydrate();
   return useSyncExternalStore(
     subscribe,
     () => store[activeUserId()] ?? EMPTY,
@@ -53,11 +69,8 @@ export function toggleFavourite(id: string) {
   load();
   const uid = activeUserId();
   const current = store[uid] ?? [];
-  store = {
-    ...store,
-    [uid]: current.includes(id)
-      ? current.filter((x) => x !== id)
-      : [...current, id],
-  };
+  const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+  store = { ...store, [uid]: next };
   persist();
+  pushPref({ favourites: next }); // sync across devices
 }

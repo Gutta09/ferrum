@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { activeUserId, assertOwner } from "./owner";
+import { loadPrefs, pushPref } from "./prefs-client";
 import { uid } from "./utils";
 
 export interface SavedPlaylist {
@@ -67,8 +68,35 @@ function subscribe(l: () => void) {
 
 const EMPTY: Store = { list: [], active: {} };
 
+function syncUp() {
+  const me = activeUserId();
+  pushPref({
+    playlists: { list: store.list.filter((p) => p.userId === me), activeId: store.active[me] },
+  });
+}
+
+const hydrated = new Set<string>();
+function hydrate() {
+  const me = activeUserId();
+  if (hydrated.has(me)) return;
+  hydrated.add(me);
+  loadPrefs().then((p) => {
+    const server = (p.playlists as { list?: SavedPlaylist[]; activeId?: string }) ?? {};
+    const mine = Array.isArray(server.list) ? server.list : [];
+    if (!mine.length) return;
+    const ids = new Set(store.list.map((x) => x.id));
+    const merged = [...store.list, ...mine.filter((x) => x?.id && !ids.has(x.id))];
+    store = {
+      list: merged,
+      active: { ...store.active, [me]: store.active[me] ?? server.activeId ?? "" },
+    };
+    persist();
+  });
+}
+
 export function usePlaylistStore(): Store {
   load();
+  hydrate();
   return useSyncExternalStore(subscribe, () => store, () => EMPTY);
 }
 
@@ -88,6 +116,7 @@ export function addPlaylist(p: Omit<SavedPlaylist, "id" | "userId">): SavedPlayl
     active: { ...store.active, [entry.userId]: entry.id },
   };
   persist();
+  syncUp();
   return entry;
 }
 
@@ -97,6 +126,7 @@ export function renamePlaylist(id: string, label: string) {
   assertOwner(src);
   store = { ...store, list: store.list.map((p) => (p.id === id ? { ...p, label } : p)) };
   persist();
+  syncUp();
 }
 
 export function removePlaylist(id: string) {
@@ -105,6 +135,7 @@ export function removePlaylist(id: string) {
   assertOwner(src);
   store = { ...store, list: store.list.filter((p) => p.id !== id) };
   persist();
+  syncUp();
 }
 
 export function parsePlaylistUrl(
@@ -172,4 +203,5 @@ export function setActivePlaylist(id: string) {
   assertOwner(src);
   store = { ...store, active: { ...store.active, [activeUserId()]: id } };
   persist();
+  syncUp();
 }
