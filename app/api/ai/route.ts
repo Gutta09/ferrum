@@ -14,7 +14,8 @@ export async function POST(req: Request) {
   const provider = await getProvider();
   const { action, payload } = await req.json();
   // observability: prove whether a real model call happens or we fall back
-  console.log(`[ai] ${action} → ${provider ? "gemini (real call)" : "fallback (no key)"}`);
+  const which = process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : "none";
+  console.log(`[ai] ${action} → ${provider ? `${which} (real call)` : "fallback (no key)"}`);
   if (!provider) return NextResponse.json({ fallback: true });
 
   try {

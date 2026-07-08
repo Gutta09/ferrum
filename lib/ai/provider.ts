@@ -48,20 +48,21 @@ export interface AIProvider {
   summarizeCircle(facts: string[]): Promise<string>;
 }
 
-/** Server-side only. Returns null when no provider is configured — callers
- * must fall back deterministically. A GEMINI_API_KEY alone activates it (the
- * provider defaults to gemini); no second flag needed. */
+/** Server-side only. Returns null when no provider is configured — callers must
+ * fall back deterministically. Whichever key is present activates it (Groq
+ * preferred when both exist); no separate flag needed. */
 export function aiConfigured(): boolean {
-  return (
-    Boolean(process.env.GEMINI_API_KEY) &&
-    (process.env.AI_PROVIDER ?? "gemini") === "gemini"
-  );
+  return Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
 }
 
 export async function getProvider(): Promise<AIProvider | null> {
-  if (aiConfigured()) {
+  if (process.env.GROQ_API_KEY) {
+    const { GroqProvider } = await import("./groq");
+    return new GroqProvider(process.env.GROQ_API_KEY);
+  }
+  if (process.env.GEMINI_API_KEY) {
     const { GeminiProvider } = await import("./gemini");
-    return new GeminiProvider(process.env.GEMINI_API_KEY!);
+    return new GeminiProvider(process.env.GEMINI_API_KEY);
   }
   return null;
 }
