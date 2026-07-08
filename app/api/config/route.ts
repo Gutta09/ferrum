@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { DB_ENABLED } from "@/lib/db";
+import { aiConfigured } from "@/lib/ai/provider";
 
-// Lets the client know whether a database is connected, so the sign-in screen
-// shows real email/password auth automatically the moment a DATABASE_URL exists
-// — no separate flag to flip.
+// Lets the client know whether a database and AI are connected. The sign-in
+// screen shows real auth the moment a DATABASE_URL exists; AI activates the
+// moment a GEMINI_API_KEY exists — no separate flags to flip.
 export const dynamic = "force-dynamic";
 
 export function GET() {
-  return NextResponse.json({ dbEnabled: DB_ENABLED });
+  return NextResponse.json({ dbEnabled: DB_ENABLED, aiEnabled: aiConfigured() });
 }

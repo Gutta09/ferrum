@@ -12,10 +12,12 @@ export async function POST(req: Request) {
   }
 
   const provider = await getProvider();
+  const { action, payload } = await req.json();
+  // observability: prove whether a real model call happens or we fall back
+  console.log(`[ai] ${action} → ${provider ? "gemini (real call)" : "fallback (no key)"}`);
   if (!provider) return NextResponse.json({ fallback: true });
 
   try {
-    const { action, payload } = await req.json();
     switch (action) {
       case "parse-sets":
         return NextResponse.json({

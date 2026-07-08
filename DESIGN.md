@@ -362,6 +362,39 @@ per device; migrating them to their (already-defined) DB tables is a
 non-blocking follow-up. Progress photos stay client object-URLs until a blob
 store is added.
 
+## Final verified state (pre-launch owner audit)
+
+**Database & persistence — VERIFIED LIVE.** MongoDB Atlas via the *native* driver
+(`lib/mongo.ts`), not Prisma (Prisma's Rust engine fails Atlas's TLS handshake).
+Workouts are embedded documents. A logged workout survives refresh and
+sign-out/sign-in on the production site; fresh accounts are empty; account B
+cannot see account A's data (owner-scoped queries + `requireUserId` on every
+mutation). The demo account is a pure seed showcase with zero DB dependency.
+
+**Auth — VERIFIED.** Email/password (bcrypt) signup+login and the one-click demo
+work live; logout clears the session; a fresh signup starts empty. Google OAuth
+is wired but dormant until `GOOGLE_CLIENT_ID/SECRET` are set (the button hides
+itself when absent — correct graceful degradation).
+
+**AI — wired end-to-end, activates on a key.** Every feature makes a *real*
+server-side Gemini call when `GEMINI_API_KEY` is present and falls back to a
+deterministic path when absent (proven via the `[ai] … → gemini (real call)` /
+`fallback` server trace). Real-model features: quick-log parsing (`parseSets`),
+photo scan (`parseWorkoutImage`), analytics Insights (`analyzeTrends`),
+finish-screen summary (`summarizeSession`) + PR narration (`narratePR`),
+dashboard weekly recap (`weeklyRecap`), circle digest (`summarizeCircle`),
+custom-exercise enrichment (`enrichCustomExercise`), and semantic exercise
+search (`searchExercises`). Grounding is enforced: `groundedOnly` /
+number-in-facts checks drop any AI line whose numbers aren't in the source data.
+Activation needs only the key — `getProvider` defaults the provider to gemini,
+so no second flag; `/api/config` reports `aiEnabled` for verification.
+
+**Owner's design decision — workout typing.** There is no separate
+tag-taxonomy. The freeform workout *name* is the human tag ("Push Day"), and the
+analytics muscle-balance is *derived* from the logged exercises' muscle groups —
+which is more honest than a hand-set label that can disagree with what you
+actually trained. This is deliberate, not a gap.
+
 ## Guardrails (enforced)
 
 No emojis, no gradients, no glow, no gamification. White = one primary action per
