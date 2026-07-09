@@ -139,7 +139,7 @@ export default function CirclePage() {
 
   const copyInvite = () => {
     if (!data) return;
-    const url = `${window.location.origin}/circles?join=${data.inviteCode}`;
+    const url = `${window.location.origin}/circles?join=${encodeURIComponent(data.inviteCode)}`;
     navigator.clipboard?.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);

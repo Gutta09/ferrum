@@ -1,8 +1,8 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Heatmap } from "@/components/charts/heatmap";
 import { MuscleBalance } from "@/components/charts/muscle-balance";
 import { VolumeArea } from "@/components/charts/volume-area";
@@ -36,8 +36,20 @@ export default function AnalyticsPage() {
   const [balance, setBalance] = useState<MuscleShare[] | null>(null);
   const [cons, setCons] = useState<{ currentWeeks: number; longestWeeks: number; activeDays: number } | null>(null);
   const [insights, setInsights] = useState<string[] | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  // the deterministic facts derived from the user's real logged data; insights
+  // only run when the user asks (button), and only rephrase these numbers
+  const factsRef = useRef<string[]>([]);
 
   const weeks = RANGES[range];
+
+  const generateInsights = async () => {
+    if (!factsRef.current.length || insightsLoading) return;
+    setInsightsLoading(true);
+    const lines = await aiInsights(factsRef.current);
+    setInsights(lines);
+    setInsightsLoading(false);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -82,7 +94,8 @@ export default function AnalyticsPage() {
             getExercise(barbell[0].exerciseId)?.name ?? "a barbell lift"
           }.`
         );
-      aiInsights(facts).then((lines) => alive && setInsights(lines));
+      // store the facts; the model call only happens when the user taps the button
+      factsRef.current = facts;
     });
     return () => {
       alive = false;
@@ -120,7 +133,15 @@ export default function AnalyticsPage() {
       ) : (
         <div className="mt-8 flex flex-col gap-5">
           <Card className="p-5 md:p-6">
-            <CardLabel>Insights</CardLabel>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardLabel>Insights</CardLabel>
+              {(insights || insightsLoading) ? null : (
+                <Button variant="primary" onClick={generateInsights}>
+                  <Sparkles className="h-4 w-4" aria-hidden />
+                  Generate insights
+                </Button>
+              )}
+            </div>
             {insights ? (
               <div className="mt-3 flex flex-col gap-1.5">
                 {insights.map((line, i) => (
@@ -128,9 +149,20 @@ export default function AnalyticsPage() {
                     {line}
                   </p>
                 ))}
+                <button
+                  onClick={generateInsights}
+                  className="mt-1 self-start text-[12px] text-tertiary transition-colors hover:text-secondary"
+                >
+                  Regenerate
+                </button>
               </div>
-            ) : (
+            ) : insightsLoading ? (
               <Skeleton className="mt-3 h-[88px]" />
+            ) : (
+              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-tertiary">
+                Get a plain-language read of your training — trends, balance, and
+                consistency — generated from your own logged data. Tap the button.
+              </p>
             )}
           </Card>
 

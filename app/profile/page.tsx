@@ -20,7 +20,7 @@ import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { exportCSV, exportJSON, importJSON } from "@/lib/export";
 import { useFavourites } from "@/lib/favourites";
-import { activeUserId } from "@/lib/owner";
+import { activeUserId, DEMO_USER_ID } from "@/lib/owner";
 import {
   activePlaylist,
   addPlaylist,
@@ -30,7 +30,7 @@ import {
   setActivePlaylist,
   usePlaylistStore,
 } from "@/lib/playlists";
-import { getExercise, statsRepo } from "@/lib/repo";
+import { getExercise, statsRepo, workoutRepo } from "@/lib/repo";
 import { PROFILE } from "@/lib/seed";
 import { updateSettings, useSettings } from "@/lib/settings";
 import {
@@ -52,9 +52,11 @@ interface Badge {
 export default function ProfilePage() {
   const [stats, setStats] = useState<LifetimeStats | null>(null);
   const [streak, setStreak] = useState(0);
+  const [since, setSince] = useState<string | null>(null);
   const { data: authSession } = useSession();
   const displayName = authSession?.user?.name ?? PROFILE.name;
   const email = authSession?.user?.email;
+  const isDemo = activeUserId() === DEMO_USER_ID;
 
   useEffect(() => {
     let alive = true;
@@ -67,6 +69,32 @@ export default function ProfilePage() {
       alive = false;
     };
   }, []);
+
+  // "Training since" = the real date of the user's first logged workout
+  useEffect(() => {
+    let alive = true;
+    if (isDemo) {
+      setSince(PROFILE.since);
+      return;
+    }
+    workoutRepo.list().then((ws) => {
+      if (!alive) return;
+      if (!ws.length) {
+        setSince(null);
+        return;
+      }
+      const earliest = ws.reduce((min, w) => (w.date < min ? w.date : min), ws[0].date);
+      setSince(
+        new Date(`${earliest}T00:00:00`).toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        })
+      );
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isDemo]);
 
   const badges: Badge[] = stats
     ? [
@@ -107,8 +135,8 @@ export default function ProfilePage() {
           <h1 className="text-h1 text-primary">{displayName}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-[13px] text-tertiary">
             {email && <span>{email}</span>}
-            <span>Training since {PROFILE.since}</span>
-            <Pill>{PROFILE.program}</Pill>
+            {since && <span>Training since {since}</span>}
+            {isDemo && <Pill>{PROFILE.program}</Pill>}
           </div>
         </div>
       </header>
@@ -429,28 +457,6 @@ function SettingsSection() {
     <section aria-label="Settings">
       <CardLabel>Settings</CardLabel>
       <Card className="mt-4 divide-y divide-line">
-        <div className="flex flex-wrap items-center gap-4 px-5 py-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-primary">Rest timer</p>
-            <p className="text-[12px] text-tertiary">Default seconds between sets</p>
-          </div>
-          <Segmented
-            options={["60", "90", "120", "180"]}
-            value={String(settings.restSeconds)}
-            onChange={(v) => updateSettings({ restSeconds: Number(v) })}
-            ariaLabel="Rest duration presets"
-          />
-          <div className="w-20">
-            <NumberStepper
-              value={settings.restSeconds}
-              step={15}
-              min={15}
-              max={600}
-              ariaLabel="Custom rest seconds"
-              onChange={(v) => updateSettings({ restSeconds: v ?? 120 })}
-            />
-          </div>
-        </div>
         <div className="flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-medium text-primary">Plate math</p>

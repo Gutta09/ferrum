@@ -98,7 +98,7 @@ export class GroqProvider implements AIProvider {
           },
         ],
       }),
-      signal: AbortSignal.timeout(15000), // vision is slower than text
+      signal: AbortSignal.timeout(20000), // vision is slower than text
     });
     if (!res.ok) throw new Error(`groq vision ${res.status}`);
     const data = await res.json();

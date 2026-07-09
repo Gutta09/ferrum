@@ -68,13 +68,6 @@ export interface WeekPoint {
   volume: number;
 }
 
-export interface E1rmPoint {
-  date: string;
-  label: string;
-  e1rm: number;
-  isPR: boolean;
-}
-
 export interface HeatmapDay {
   date: string;
   volume: number;

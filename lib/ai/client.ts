@@ -11,19 +11,39 @@ import {
 import { groundedOnly } from "@/lib/insights";
 import type { ParseResult, SessionFacts, WeekFacts } from "./provider";
 
-async function post<T>(action: string, payload: unknown): Promise<T | null> {
+async function post<T>(action: string, payload: unknown, timeoutMs = 7000): Promise<T | null> {
   try {
     const res = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, payload }),
-      signal: AbortSignal.timeout(7000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     const data = await res.json();
     return data.fallback ? null : (data.result as T);
   } catch {
     return null;
+  }
+}
+
+/** Downscale a photo to a ~1400px JPEG so it's small enough for the server cap
+ * and fast for the vision model. Returns raw base64 (no data: prefix). */
+async function toResizedBase64(file: File): Promise<string> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const max = 1400;
+    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    return canvas.toDataURL("image/jpeg", 0.85).split(",")[1] ?? "";
+  } catch {
+    return "";
   }
 }
 
@@ -50,14 +70,14 @@ export async function aiParseImage(
   file: File,
   exerciseNames: string[]
 ): Promise<ParseResult | null> {
-  const image = await new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  }).catch(() => "");
+  const image = await toResizedBase64(file);
   if (!image) return null;
-  return post<ParseResult>("parse-image", { image, mime: file.type, exerciseNames });
+  // vision is slower than text — give it up to 22s before falling back
+  return post<ParseResult>(
+    "parse-image",
+    { image, mime: "image/jpeg", exerciseNames },
+    22000
+  );
 }
 
 /** Caller keeps the template line unless the narration checks out. */

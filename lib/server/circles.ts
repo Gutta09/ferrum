@@ -7,11 +7,22 @@ import { listWorkouts } from "./workouts";
 const MEMBER_CAP = 8;
 const exerciseName = (id: string) => EXERCISES.find((e) => e.id === id)?.name ?? id;
 
+// 5-character invite code that always contains at least one letter, one digit,
+// and one special character (unambiguous letters/digits only; URL-safe specials)
 function inviteCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 8; i += 1) code += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return code;
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const specials = "!*@$"; // special, but all safe inside a URL query value
+  const all = letters + digits + specials;
+  const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
+  const chars = [pick(letters), pick(digits), pick(specials)];
+  while (chars.length < 5) chars.push(pick(all));
+  // Fisher–Yates shuffle so the guaranteed types aren't always in fixed slots
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
 }
 
 function shareDefaults() {

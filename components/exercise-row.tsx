@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, HelpCircle, StickyNote } from "lucide-react";
+import { Check, StickyNote } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Menu } from "@/components/ui/menu";
@@ -72,7 +72,7 @@ export interface ExerciseRowProps {
 
 // <sm: the ghost placeholders carry "previous", the ✓ gets a 48px thumb target
 const GRID =
-  "grid grid-cols-[24px_minmax(56px,1.1fr)_minmax(48px,1fr)_minmax(48px,1fr)_48px] sm:grid-cols-[28px_minmax(56px,0.9fr)_minmax(62px,1fr)_minmax(52px,1fr)_minmax(52px,1fr)_44px] items-center gap-1";
+  "grid grid-cols-[24px_minmax(64px,1.2fr)_minmax(56px,1fr)_48px] sm:grid-cols-[28px_minmax(56px,0.9fr)_minmax(64px,1fr)_minmax(56px,1fr)_44px] items-center gap-1";
 
 export function ExerciseRow({
   data,
@@ -92,7 +92,6 @@ export function ExerciseRow({
   const lastTop = last?.sets[0];
   const isBarbell = exercise.equipment === "Barbell";
   const [platesFor, setPlatesFor] = useState<string | null>(null);
-  const [rpeHelp, setRpeHelp] = useState(false);
 
   return (
     <Card className="overflow-visible" onFocusCapture={() => onActivity(data.id)}>
@@ -105,7 +104,6 @@ export function ExerciseRow({
         {lastTop && (
           <span className="hidden font-mono text-[12px] tabular-nums text-tertiary md:block">
             Last: {formatWeight(lastTop.weight)} kg × {lastTop.reps}
-            {lastTop.rpe ? ` @ RPE ${formatWeight(lastTop.rpe)}` : ""}
           </span>
         )}
         <div className="ml-auto flex items-center gap-1">
@@ -160,56 +158,18 @@ export function ExerciseRow({
       )}
 
       <div className={cn(GRID, "border-t border-line px-3 py-2 md:px-4")}>
-        {["Set", "Prev", "kg", "Reps", "RPE", "✓"].map((h) =>
-          h === "RPE" ? (
-            <span
-              key={h}
-              className="relative flex items-center justify-center gap-1 text-label uppercase text-tertiary"
-            >
-              RPE
-              <button
-                aria-label="What is RPE?"
-                aria-expanded={rpeHelp}
-                onClick={() => setRpeHelp((v) => !v)}
-                onBlur={() => setRpeHelp(false)}
-                className="rounded-full text-tertiary transition-colors hover:text-primary"
-              >
-                <HelpCircle className="h-3 w-3" aria-hidden />
-              </button>
-              {rpeHelp && (
-                <span
-                  role="tooltip"
-                  className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-input border border-line bg-card p-3 text-left normal-case tracking-normal shadow-ambient"
-                >
-                  <span className="block text-[12px] font-medium text-primary">
-                    Rate of Perceived Exertion
-                  </span>
-                  <span className="mt-1 block text-[11.5px] font-normal leading-relaxed text-tertiary">
-                    How hard the set felt, 1–10.
-                  </span>
-                  <span className="mt-2 block font-mono text-[11px] font-normal leading-relaxed tabular-nums text-secondary">
-                    10 · nothing left
-                    <br />9 · 1 rep left
-                    <br />8 · 2 reps left
-                    <br />7 · 3 reps left
-                    <br />6 · 4+ reps left
-                  </span>
-                </span>
-              )}
-            </span>
-          ) : (
-            <span
-              key={h}
-              aria-hidden
-              className={cn(
-                "text-center text-label uppercase text-tertiary",
-                h === "Prev" && "hidden sm:block"
-              )}
-            >
-              {h}
-            </span>
-          )
-        )}
+        {["Set", "Prev", "kg", "Reps", "✓"].map((h) => (
+          <span
+            key={h}
+            aria-hidden
+            className={cn(
+              "text-center text-label uppercase text-tertiary",
+              h === "Prev" && "hidden sm:block"
+            )}
+          >
+            {h}
+          </span>
+        ))}
       </div>
 
       <div>
@@ -256,11 +216,7 @@ export function ExerciseRow({
                     "rounded-md py-1 transition-colors hover:bg-ink/[0.04] hover:text-secondary"
                 )}
               >
-                {prev
-                  ? `${formatWeight(prev.weight)}×${prev.reps}${
-                      prev.rpe ? ` @${formatWeight(prev.rpe)}` : ""
-                    }`
-                  : "—"}
+                {prev ? `${formatWeight(prev.weight)}×${prev.reps}` : "—"}
               </button>
 
               <div
@@ -291,17 +247,6 @@ export function ExerciseRow({
                 onChange={(v) =>
                   onUpdateSet(data.id, set.id, { reps: v === null ? null : Math.round(v) })
                 }
-                onEnter={complete}
-                disabled={set.completed}
-                className="mx-auto w-full max-w-[80px]"
-              />
-              <NumberStepper
-                value={set.rpe}
-                ghost={ghost?.rpe}
-                step={0.5}
-                max={10}
-                ariaLabel={`${exercise.name} set ${idx + 1} RPE`}
-                onChange={(v) => onUpdateSet(data.id, set.id, { rpe: v })}
                 onEnter={complete}
                 disabled={set.completed}
                 className="mx-auto w-full max-w-[80px]"

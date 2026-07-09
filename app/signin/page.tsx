@@ -71,10 +71,19 @@ function SignInView() {
         window.location.href = "/";
         return;
       }
-      // auto-login didn't establish (common on a cold serverless start). Never
-      // dead-end: a just-created account is redirected to a clear sign-in prompt;
-      // an existing account sees the wrong-credentials error.
+      // On a cold serverless start the first auth can miss while the DB connection
+      // warms. For a fresh signup, retry a couple times (the connection is warm by
+      // now) so the user lands straight on the dashboard instead of bouncing.
       if (signingUp) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          await new Promise((r) => setTimeout(r, 1200));
+          const retry = await signIn("credentials", { email, password, redirect: false });
+          if (retry?.ok && !retry?.error) {
+            window.location.href = "/";
+            return;
+          }
+        }
+        // still not established — never dead-end: clear "please sign in" prompt
         window.location.href = "/signin?created=1";
         return;
       }

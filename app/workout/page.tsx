@@ -14,7 +14,6 @@ import {
 } from "@/components/exercise-row";
 import { FavouriteStar } from "@/components/favourite-star";
 import { NowPlaying } from "@/components/now-playing";
-import { RestTimer } from "@/components/rest-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardLabel } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,7 @@ import { bestE1rm, getExercise, lastPerformance, userWorkoutCount, workoutRepo }
 import { ensureWorkouts, invalidateWorkouts } from "@/lib/workout-cache";
 import { EXERCISES } from "@/lib/seed";
 import { activeUserId, DEMO_USER_ID } from "@/lib/owner";
-import { useSettings } from "@/lib/settings";
+import { clearDraft, loadDraft, saveDraft } from "@/lib/workout-draft";
 import { useFavourites } from "@/lib/favourites";
 import { addTemplate, getTemplate } from "@/lib/templates";
 import { aiEnrich, aiNarratePR, aiParseImage, aiParseSets, aiSummarize } from "@/lib/ai/client";
@@ -79,6 +78,7 @@ function WorkoutView() {
   const { toast } = useToast();
   const params = useSearchParams();
   const templateId = params.get("template");
+  const blank = params.get("blank");
 
   // no predefined workouts: every session starts empty unless the user
   // chose one of their own templates
@@ -102,27 +102,39 @@ function WorkoutView() {
             })
           );
         }
+      } else if (!blank) {
+        // restore an in-progress session so leaving the screen never loses it
+        const draft = loadDraft();
+        if (draft) {
+          setSessionName(draft.name);
+          setSession(draft.session);
+        }
       }
       setReady(true);
     });
     return () => {
       alive = false;
     };
-  }, [templateId]);
+  }, [templateId, blank]);
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  const [restSession, setRestSession] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [lastLogMs, setLastLogMs] = useState<number | null>(null);
   const [finished, setFinished] = useState<Summary | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
   elapsedRef.current = elapsed;
-  const { restSeconds } = useSettings();
   const [scrolled, setScrolled] = useState(false);
   const [visionOn, setVisionOn] = useState(false);
   const isDemo = activeUserId() === DEMO_USER_ID;
+
+  // auto-save the in-progress session on every change, so navigating away
+  // (dashboard, refresh, phone lock) and coming back restores it. Cleared on Finish.
+  useEffect(() => {
+    if (!ready || finished) return;
+    saveDraft(sessionName, session);
+  }, [session, sessionName, ready, finished]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 64);
@@ -300,7 +312,6 @@ function WorkoutView() {
           description: `${formatWeight(weight)} kg × ${reps}`,
         });
       }
-      setRestSession((r) => r + 1);
       requestAnimationFrame(() => focusNextIncomplete(setId));
     },
     [focusNextIncomplete, getBest, getLast, getSuggestion, toast, updateSet]
@@ -395,9 +406,9 @@ function WorkoutView() {
         : [];
     });
     const seconds = elapsedRef.current;
-    setRestSession(0);
     setTimerState("paused");
     setFinished({ volume: vol, seconds, setsDone: done, prCount, prs });
+    clearDraft(); // committed to the DB now — drop the local draft
 
     // persist to the database — the workout survives refresh, sign-out, devices
     const payload = {
@@ -507,8 +518,6 @@ function WorkoutView() {
       window.removeEventListener("ferrum:finish", onFinish);
     };
   }, [addSetToActive, finish]);
-
-  const dismissRest = useCallback(() => setRestSession(0), []);
 
   /** stages parsed sets into the matching exercise — values only, the lifter
    * still confirms each set with Enter. Nothing auto-completes. */
@@ -939,7 +948,6 @@ function WorkoutView() {
         </Button>
       </div>
 
-      <RestTimer session={restSession} seconds={restSeconds} onDismiss={dismissRest} />
       <NowPlaying />
 
       <ExercisePicker

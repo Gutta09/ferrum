@@ -1,8 +1,8 @@
 // Deterministic, per-chart takeaways: the chart proves it, the sentence says
 // it. These are the zero-AI floor; Gemini only rephrases them, never invents.
 
-import type { E1rmPoint, MuscleShare, WeekPoint } from "./types";
-import { formatInt, formatWeight } from "./utils";
+import type { MuscleShare, WeekPoint } from "./types";
+import { formatInt } from "./utils";
 
 export function volumeTakeaway(points: WeekPoint[]): string {
   const nz = points.filter((p) => p.volume > 0);
@@ -12,14 +12,6 @@ export function volumeTakeaway(points: WeekPoint[]): string {
   const pct = Math.round(((last - first) / first) * 100);
   if (Math.abs(pct) < 5) return `Weekly volume steady around ${formatInt(last)} kg over ${nz.length} weeks.`;
   return `Weekly volume ${pct > 0 ? "up" : "down"} ${Math.abs(pct)}% over ${nz.length} weeks.`;
-}
-
-export function e1rmTakeaway(lift: string, points: E1rmPoint[]): string {
-  if (points.length < 2) return `Not enough ${lift} sessions to read a trend yet.`;
-  const diff = points[points.length - 1].e1rm - points[0].e1rm;
-  const prs = points.filter((p) => p.isPR).length;
-  if (Math.abs(diff) < 1) return `${lift} e1RM flat across ${points.length} sessions.`;
-  return `${lift} e1RM ${diff > 0 ? "up" : "down"} ${formatWeight(Math.abs(diff))} kg across ${points.length} sessions${prs ? ` · ${prs} PR${prs > 1 ? "s" : ""}` : ""}.`;
 }
 
 export function setsTakeaway(points: WeekPoint[]): string {

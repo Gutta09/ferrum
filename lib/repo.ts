@@ -8,7 +8,6 @@ import { EXERCISES } from "./seed";
 import { cachedWorkouts, ensureWorkouts } from "./workout-cache";
 import type {
   Difficulty,
-  E1rmPoint,
   Equipment,
   Exercise,
   HeatmapDay,
@@ -296,22 +295,6 @@ export const statsRepo = {
     return [...(barbell.length ? barbell : prs)].sort((a, b) =>
       a.date > b.date ? -1 : 1
     )[0];
-  },
-
-  async e1rmSeries(exerciseId: string): Promise<E1rmPoint[]> {
-    await ensureWorkouts();
-    const points: E1rmPoint[] = [];
-    let best = 0;
-    for (const w of byUser()) {
-      const ex = w.exercises.find((x) => x.exerciseId === exerciseId);
-      if (!ex) continue;
-      let top = 0;
-      for (const s of ex.sets) top = Math.max(top, e1rm(s.weight, s.reps));
-      const isPR = top > best + 0.5;
-      if (isPR) best = top;
-      points.push({ date: w.date, label: formatShort(w.date), e1rm: top, isPR });
-    }
-    return points;
   },
 
   /** Cell intensity is driven by the number of distinct exercises logged that
