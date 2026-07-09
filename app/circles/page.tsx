@@ -3,6 +3,7 @@
 import { ArrowRight, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardLabel } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { DEMO_USER_ID } from "@/lib/owner";
 
 interface CircleRow {
   id: string;
@@ -26,6 +28,8 @@ function CirclesView() {
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { data: session } = useSession();
+  const isGuest = (session?.user as { id?: string } | undefined)?.id === DEMO_USER_ID;
 
   const load = () =>
     fetch("/api/circles")
@@ -83,6 +87,21 @@ function CirclesView() {
         </p>
       </header>
 
+      {isGuest ? (
+        <Card className="mt-8 p-6 md:p-8">
+          <EmptyState
+            icon={Users}
+            title="Circles need an account"
+            hint="Create a free account to start a private circle and invite your training partners. The guest view can't create or join circles."
+            action={
+              <Link href="/signin">
+                <Button variant="primary">Create an account</Button>
+              </Link>
+            }
+          />
+        </Card>
+      ) : (
+        <>
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
         <Card className="p-5 md:p-6">
           <CardLabel>Create a circle</CardLabel>
@@ -109,7 +128,7 @@ function CirclesView() {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && join()}
-              placeholder="8-character invite code"
+              placeholder="5-character invite code"
               aria-label="Invite code"
               className="font-mono tracking-[0.15em]"
             />
@@ -161,6 +180,8 @@ function CirclesView() {
           </div>
         )}
       </div>
+        </>
+      )}
     </>
   );
 }

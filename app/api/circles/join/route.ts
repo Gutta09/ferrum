@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { DB_ENABLED } from "@/lib/db";
+import { DEMO_USER_ID } from "@/lib/owner";
 import { joinByCode } from "@/lib/server/circles";
 import { requireUserId, UnauthorizedError } from "@/lib/server/session";
 
@@ -11,6 +12,8 @@ export async function POST(req: Request) {
     );
   try {
     const userId = await requireUserId();
+    if (userId === DEMO_USER_ID)
+      return NextResponse.json({ error: "Create a free account to use Circles." }, { status: 403 });
     const { code } = await req.json();
     const id = await joinByCode(userId, String(code ?? ""));
     return NextResponse.json({ id });
