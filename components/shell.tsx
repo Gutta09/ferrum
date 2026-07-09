@@ -45,6 +45,10 @@ export function Shell({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const { data: session, status } = useSession();
   const isPublic = pathname === "/" || pathname === "/signin";
+  // the nav rail links to protected pages — only show it once signed in. During
+  // a hard refresh on a protected route we keep it (status is briefly "loading")
+  // to avoid a layout shift for logged-in users.
+  const showNav = status === "authenticated" || (status === "loading" && !isPublic);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   useEffect(() => {
     setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
@@ -58,7 +62,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {/* desktop icon rail */}
+      {/* desktop icon rail — signed-in only */}
+      {showNav && (
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-line bg-bg transition-[width] duration-200 ease-swift md:flex",
@@ -180,8 +185,10 @@ export function Shell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
+      )}
 
-      {/* mobile bottom tabs */}
+      {/* mobile bottom tabs — signed-in only */}
+      {showNav && (
       <nav
         aria-label="Primary"
         className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden"
@@ -204,11 +211,12 @@ export function Shell({ children }: { children: ReactNode }) {
           );
         })}
       </nav>
+      )}
 
       <main
         className={cn(
           "transition-[padding] duration-200 ease-swift",
-          expanded ? "md:pl-52" : "md:pl-16"
+          showNav ? (expanded ? "md:pl-52" : "md:pl-16") : ""
         )}
       >
         <div className="mx-auto w-full max-w-[1280px] px-5 pb-32 pt-8 md:px-10 md:pb-20 md:pt-12">
@@ -223,7 +231,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <CommandPalette />
+      {showNav && <CommandPalette />}
     </>
   );
 }
