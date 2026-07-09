@@ -2,12 +2,12 @@
 
 // Progress photos persist to MongoDB (owner-scoped) via /api/photos. Images are
 // resized client-side to a ~1000px JPEG data URL before upload — small enough to
-// live in a document, no separate blob store to provision. The demo account
-// shows seed placeholders (read-only, no DB).
+// live in a document, no separate blob store to provision. The guest account is
+// a clean, empty slate (no seed, read-only).
 
 import { useSyncExternalStore } from "react";
 import { activeUserId, DEMO_USER_ID } from "./owner";
-import { addDays, toKey } from "./utils";
+import { toKey } from "./utils";
 
 export interface ProgressPhoto {
   id: string;
@@ -15,19 +15,6 @@ export interface ProgressPhoto {
   date: string; // ISO yyyy-mm-dd
   url: string;
   workoutId?: string;
-}
-
-function placeholder(label: string) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#17181B"/><rect x="0.5" y="0.5" width="599" height="799" fill="none" stroke="rgba(255,255,255,0.06)"/><ellipse cx="300" cy="330" rx="92" ry="120" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="2"/><path d="M170 640c10-120 80-170 130-170s120 50 130 170" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="2"/><text x="300" y="740" text-anchor="middle" font-family="monospace" font-size="26" fill="#6B6B72">${label}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-function seedPhotos(): ProgressPhoto[] {
-  const today = new Date();
-  return [8, 6, 4, 2].map((weeksAgo) => {
-    const date = toKey(addDays(today, -7 * weeksAgo));
-    return { id: `seed-${weeksAgo}`, userId: DEMO_USER_ID, date, url: placeholder(date) };
-  });
 }
 
 let photos: ProgressPhoto[] | null = null;
@@ -46,7 +33,7 @@ async function hydrate() {
   if (inflight) return inflight;
   inflight = (async () => {
     if (activeUserId() === DEMO_USER_ID) {
-      photos = seedPhotos();
+      photos = []; // guest starts clean
     } else {
       const r = await fetch("/api/photos", { cache: "no-store" }).catch(() => null);
       const d = r && r.ok ? await r.json() : { photos: [] };

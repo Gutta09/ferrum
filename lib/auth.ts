@@ -48,7 +48,7 @@ providers.push(
     credentials: {},
     // the demo account is a pure seed showcase — no database touched, so it
     // always works even if the DB is unreachable
-    authorize: async () => ({ id: DEMO_USER_ID, name: "Bhargav", email: "demo@ferrum.local" }),
+    authorize: async () => ({ id: DEMO_USER_ID, name: "Guest", email: "guest@ferrum.local" }),
   })
 );
 

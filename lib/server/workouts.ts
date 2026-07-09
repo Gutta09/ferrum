@@ -1,15 +1,14 @@
 import "server-only";
 import { collections, ensureIndexes, newId } from "@/lib/mongo";
 import { DEMO_USER_ID } from "@/lib/owner";
-import { WORKOUTS } from "@/lib/seed";
 import type { Workout } from "@/lib/types";
 
 /** All of one user's workouts as the app's Workout shape. Owner-scoping is the
  * query filter — it can only ever return the caller's documents. Exercises and
  * sets are embedded, so no joins; synthetic ids are assigned for React keys.
- * The demo account is served the in-memory seed (no DB dependency). */
+ * The guest account is a clean, empty slate (no seed, no DB writes). */
 export async function listWorkouts(userId: string): Promise<Workout[]> {
-  if (userId === DEMO_USER_ID) return WORKOUTS;
+  if (userId === DEMO_USER_ID) return [];
   await ensureIndexes();
   const { workouts } = await collections();
   const rows = await workouts.find({ userId }).sort({ date: 1 }).toArray();

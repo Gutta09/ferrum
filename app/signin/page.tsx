@@ -214,7 +214,7 @@ function SignInView() {
             signIn("demo", { callbackUrl: "/" });
           }}
         >
-          {pending === "demo" ? "Signing in…" : "Continue as demo lifter"}
+          {pending === "demo" ? "Signing in…" : "Continue as guest"}
         </Button>
       </Card>
       <p className="mt-4 max-w-xs text-[12px] leading-relaxed text-tertiary">

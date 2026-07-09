@@ -58,9 +58,9 @@ export function Physique() {
   };
 
   return (
-    <section aria-label="Physique">
+    <section aria-label="Previous photos">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-label uppercase tracking-[0.02em] text-tertiary">Physique</p>
+        <p className="text-label uppercase tracking-[0.02em] text-tertiary">Previous photos</p>
         {photos.length >= 2 && (
           <Button
             size="sm"

@@ -849,7 +849,7 @@ function WorkoutView() {
 
       {isDemo && (
         <p className="mb-4 rounded-input border border-line bg-card px-3 py-2 text-center text-[12.5px] text-tertiary">
-          Demo mode — explore freely; workouts logged here aren&apos;t saved.
+          Guest mode — explore freely; workouts logged here aren&apos;t saved.
         </p>
       )}
 

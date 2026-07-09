@@ -20,7 +20,7 @@ import { Segmented } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { exportCSV, exportJSON, importJSON } from "@/lib/export";
 import { useFavourites } from "@/lib/favourites";
-import { activeUserId, DEMO_USER_ID } from "@/lib/owner";
+import { activeUserId } from "@/lib/owner";
 import {
   activePlaylist,
   addPlaylist,
@@ -56,7 +56,6 @@ export default function ProfilePage() {
   const { data: authSession } = useSession();
   const displayName = authSession?.user?.name ?? PROFILE.name;
   const email = authSession?.user?.email;
-  const isDemo = activeUserId() === DEMO_USER_ID;
 
   useEffect(() => {
     let alive = true;
@@ -73,10 +72,6 @@ export default function ProfilePage() {
   // "Training since" = the real date of the user's first logged workout
   useEffect(() => {
     let alive = true;
-    if (isDemo) {
-      setSince(PROFILE.since);
-      return;
-    }
     workoutRepo.list().then((ws) => {
       if (!alive) return;
       if (!ws.length) {
@@ -94,7 +89,7 @@ export default function ProfilePage() {
     return () => {
       alive = false;
     };
-  }, [isDemo]);
+  }, []);
 
   const badges: Badge[] = stats
     ? [
@@ -136,7 +131,6 @@ export default function ProfilePage() {
           <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-[13px] text-tertiary">
             {email && <span>{email}</span>}
             {since && <span>Training since {since}</span>}
-            {isDemo && <Pill>{PROFILE.program}</Pill>}
           </div>
         </div>
       </header>
