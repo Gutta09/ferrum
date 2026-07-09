@@ -4,3 +4,8 @@
 .env.supabase
 node_modules
 .next
+
+# Capacitor (iOS) — not needed by the web deploy
+www
+ios
+capacitor.config.ts
