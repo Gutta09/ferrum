@@ -219,7 +219,7 @@ export function Shell({ children }: { children: ReactNode }) {
           showNav ? (expanded ? "md:pl-52" : "md:pl-16") : ""
         )}
       >
-        <div className="mx-auto w-full max-w-[1280px] px-5 pb-32 pt-8 md:px-10 md:pb-20 md:pt-12">
+        <div className="mx-auto w-full max-w-[1280px] px-5 pb-32 pt-[calc(1.25rem_+_env(safe-area-inset-top))] md:px-10 md:pb-20 md:pt-12">
           {!isPublic && status === "loading" ? (
             <div className="flex flex-col gap-5 pt-4">
               <Skeleton className="h-32 rounded-card" />

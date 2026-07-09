@@ -709,7 +709,7 @@ function WorkoutView() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: statsDelay + 0.15 }}
-          className="mt-8 flex items-center gap-3"
+          className="mt-8 flex flex-wrap items-center justify-center gap-3"
         >
           <Link href="/">
             <Button variant="primary">Back to dashboard</Button>
@@ -759,7 +759,7 @@ function WorkoutView() {
     <>
       <header
         className={cn(
-          "sticky top-0 z-30 -mx-5 mb-8 border-b border-line bg-bg/70 px-5 backdrop-blur-xl transition-[padding] duration-200 ease-swift md:-mx-10 md:px-10",
+          "sticky top-[env(safe-area-inset-top)] z-30 -mx-5 mb-8 border-b border-line bg-bg/70 px-5 backdrop-blur-xl transition-[padding] duration-200 ease-swift md:-mx-10 md:px-10",
           scrolled ? "py-1.5 md:py-3" : "py-3"
         )}
       >
@@ -936,7 +936,7 @@ function WorkoutView() {
       </div>
 
       {/* thumb-zone action bar — primary actions live in the bottom third */}
-      <div className="fixed inset-x-0 bottom-14 z-30 flex items-center gap-3 border-t border-line bg-bg px-4 py-2 sm:hidden">
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t border-line bg-bg px-4 py-2 sm:hidden">
         <span className="flex-1 font-mono text-[14px] tabular-nums text-secondary">
           {setsDone}/{setsTotal} sets
         </span>
