@@ -4,6 +4,7 @@ import { ArrowRight, CalendarX, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Physique } from "@/components/physique";
 import { WorkoutCard } from "@/components/workout-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -56,18 +57,6 @@ function HistoryView() {
         )
     );
   }, [workouts, q]);
-
-  const rename = (id: string, name: string) => {
-    setWorkouts((prev) =>
-      prev ? prev.map((w) => (w.id === id ? { ...w, name } : w)) : prev
-    );
-    // owner-scoped server-side update
-    fetch("/api/workouts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name }),
-    }).catch(() => {});
-  };
 
   return (
     <>
@@ -154,12 +143,11 @@ function HistoryView() {
                   />
                   <WorkoutCard
                     workout={w}
-                    onRename={(name) => rename(w.id, name)}
                     onAttachPhoto={(file) => {
                       addPhotoFile(file, w.date, w.id);
                       toast({
                         tone: "success",
-                        title: "Photo added to Physique",
+                        title: "Photo saved to Previous photos",
                         description: w.date,
                       });
                     }}
@@ -170,6 +158,10 @@ function HistoryView() {
           </div>
         )}
       </div>
+
+      <section className="mt-14">
+        <Physique />
+      </section>
     </>
   );
 }

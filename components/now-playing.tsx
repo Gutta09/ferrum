@@ -164,7 +164,7 @@ export function NowPlaying() {
 
   return (
     <>
-      <div className="fixed bottom-[120px] right-4 z-40 flex flex-col items-end gap-2 md:bottom-8 md:right-8">
+      <div className="fixed right-4 top-[calc(5rem_+_env(safe-area-inset-top))] z-40 flex flex-col-reverse items-end gap-2 md:right-8 md:top-24">
         {playlist && (
           <div
             className={cn(

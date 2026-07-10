@@ -145,20 +145,24 @@ export default function ProfilePage() {
             : (
                 <>
                   {/* the coin vault IS the workout count — one coin per day showed up */}
-                  <Card className="flex items-center p-5">
-                    <CoinVault total={stats.workouts} />
-                  </Card>
-                  {[
-                    { label: "Personal records", value: formatInt(stats.prs) },
-                    { label: "Sets logged", value: formatInt(stats.sets) },
-                    { label: "Hours trained", value: formatInt(stats.hours) },
-                  ].map((s) => (
-                    <Card key={s.label} className="p-5">
-                      <CardLabel>{s.label}</CardLabel>
-                      <p className="mt-2.5 font-mono text-[24px] font-medium tabular-nums text-primary">
-                        {s.value}
-                      </p>
+                  <Link href="/history" aria-label="Workouts — open history">
+                    <Card interactive className="flex h-full items-center p-5">
+                      <CoinVault total={stats.workouts} />
                     </Card>
+                  </Link>
+                  {[
+                    { label: "Personal records", value: formatInt(stats.prs), href: "/analytics" },
+                    { label: "Sets logged", value: formatInt(stats.sets), href: "/analytics" },
+                    { label: "Hours trained", value: formatInt(stats.hours), href: "/history" },
+                  ].map((s) => (
+                    <Link key={s.label} href={s.href} aria-label={`${s.label} — open ${s.href.slice(1)}`}>
+                      <Card interactive className="h-full p-5">
+                        <CardLabel>{s.label}</CardLabel>
+                        <p className="mt-2.5 font-mono text-[24px] font-medium tabular-nums text-primary">
+                          {s.value}
+                        </p>
+                      </Card>
+                    </Link>
                   ))}
                 </>
               )}

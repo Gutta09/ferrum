@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
+import { LogoMark } from "@/components/logo";
 import { Menu } from "@/components/ui/menu";
 import { aiRecap } from "@/lib/ai/client";
 import { activeUserId } from "@/lib/owner";
@@ -110,8 +111,8 @@ export default function DashboardPage() {
   if (status === "unauthenticated") {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center text-center">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-card text-[16px] font-semibold text-primary">
-          F
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-card text-primary">
+          <LogoMark className="h-6 w-6" />
         </span>
         <h1 className="mt-6 text-display text-primary">Ferrum</h1>
         <p className="mt-3 text-[15px] text-secondary">

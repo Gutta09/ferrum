@@ -9,3 +9,5 @@ node_modules
 www
 ios
 capacitor.config.ts
+
+assets

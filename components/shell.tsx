@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { CommandPalette } from "@/components/command-palette";
+import { LogoMark } from "@/components/logo";
 import { Menu } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -76,8 +77,8 @@ export function Shell({ children }: { children: ReactNode }) {
             aria-label="Ferrum home"
             className="flex items-center gap-3"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-card text-[13px] font-semibold text-primary">
-              F
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-card text-primary">
+              <LogoMark className="h-4 w-4" />
             </span>
             {expanded && (
               <span className="text-[14px] font-semibold tracking-tight text-primary">

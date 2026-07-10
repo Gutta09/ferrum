@@ -1,28 +1,19 @@
 "use client";
 
 import { ImagePlus } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Card, CardLabel } from "@/components/ui/card";
 import { Pill } from "@/components/ui/pill";
 import { getExercise } from "@/lib/repo";
 import type { Workout } from "@/lib/types";
-import {
-  cn,
-  e1rm,
-  formatDuration,
-  formatLong,
-  formatWeight,
-} from "@/lib/utils";
+import { e1rm, formatDuration, formatLong, formatWeight } from "@/lib/utils";
 
 export interface WorkoutCardProps {
   workout: Workout;
-  onRename?: (name: string) => void;
   onAttachPhoto?: (file: File) => void;
 }
 
-export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardProps) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(workout.name);
+export function WorkoutCard({ workout, onAttachPhoto }: WorkoutCardProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const hasPR = workout.exercises.some((ex) => ex.sets.some((s) => s.isPR));
@@ -42,13 +33,6 @@ export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardPro
     .filter((t) => t.set)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
-
-  const commit = () => {
-    setEditing(false);
-    const name = draft.trim();
-    if (name && name !== workout.name) onRename?.(name);
-    else setDraft(workout.name);
-  };
 
   return (
     <Card interactive className="p-5 md:p-6">
@@ -83,34 +67,7 @@ export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardPro
       </div>
 
       <div className="mt-2 flex items-center gap-2.5">
-        {editing ? (
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                setDraft(workout.name);
-                setEditing(false);
-              }
-            }}
-            aria-label="Workout name"
-            className="rounded-lg bg-ink/[0.05] px-2 py-0.5 text-[17px] font-semibold tracking-tight text-primary focus:outline-none"
-          />
-        ) : (
-          <button
-            onClick={onRename ? () => setEditing(true) : undefined}
-            className={cn(
-              "rounded-lg text-left text-[17px] font-semibold tracking-tight text-primary",
-              onRename && "-mx-2 px-2 py-0.5 transition-colors hover:bg-ink/[0.05]"
-            )}
-            title={onRename ? "Rename workout" : undefined}
-          >
-            {draft}
-          </button>
-        )}
+        <h3 className="text-[17px] font-semibold tracking-tight text-primary">{workout.name}</h3>
         {hasPR && <Pill tone="gold">PR</Pill>}
       </div>
 
@@ -120,7 +77,6 @@ export function WorkoutCard({ workout, onRename, onAttachPhoto }: WorkoutCardPro
             <span className="truncate text-[13px] text-secondary">{name}</span>
             <span className="shrink-0 font-mono text-[13px] tabular-nums text-primary">
               {formatWeight(set.weight)} kg × {set.reps}
-              {set.rpe ? <span className="text-tertiary"> @ {formatWeight(set.rpe)}</span> : null}
             </span>
           </div>
         ))}

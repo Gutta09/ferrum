@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { getProviders, signIn } from "next-auth/react";
 import { Suspense, useEffect, useState } from "react";
+import { LogoMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,8 +103,8 @@ function SignInView() {
 
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-sm flex-col items-center justify-center px-1 text-center">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-card text-[16px] font-semibold text-primary">
-        F
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-card text-primary">
+        <LogoMark className="h-6 w-6" />
       </span>
       <h1 className="mt-6 text-h1 text-primary">
         {mode === "signup" ? "Create your log" : "Ferrum"}
