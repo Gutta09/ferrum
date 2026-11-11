@@ -28,6 +28,7 @@ import { activeUserId, DEMO_USER_ID } from "@/lib/owner";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/workout-draft";
 import { useFavourites } from "@/lib/favourites";
 import { addTemplate, getTemplate } from "@/lib/templates";
+import { guessMeta, parsePastedWorkout } from "@/lib/paste-workout";
 import { aiEnrich, aiNarratePR, aiParseImage, aiParseSets, aiSummarize } from "@/lib/ai/client";
 import { sanityCheck } from "@/lib/ai/fallback";
 import type { ParseResult } from "@/lib/ai/provider";
@@ -365,6 +366,57 @@ function WorkoutView() {
     setPickerOpen(false);
     focusWeight(first.id);
   }, []);
+
+  // a pasted workout list → every exercise added with empty sets; numbers in
+  // the paste are ignored on purpose so weights/reps are always logged live
+  const pasteWorkout = useCallback(
+    (text: string) => {
+      const items = parsePastedWorkout(text, EXERCISES);
+      if (!items.length) {
+        toast({ title: "No exercises found", description: "Put one exercise per line." });
+        return;
+      }
+      const existing = new Set(sessionRef.current.map((e) => e.exercise.id));
+      const added: LiveExercise[] = [];
+      for (const it of items) {
+        let exercise = it.match;
+        if (!exercise) {
+          const slug = it.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          const id = `${slug}--${activeUserId()}`;
+          exercise = EXERCISES.find((e) => e.id === id) ?? null;
+          if (!exercise) {
+            const meta = guessMeta(it.name);
+            exercise = { id, name: it.name, ...meta, difficulty: "Intermediate" as Difficulty };
+            EXERCISES.push(exercise);
+            fetch("/api/exercises", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id, name: it.name, ...meta }),
+            }).catch(() => {});
+          }
+        }
+        if (existing.has(exercise.id)) continue;
+        existing.add(exercise.id);
+        added.push({
+          id: uid("ex"),
+          exercise,
+          sets: [emptySet(), emptySet(), emptySet()],
+          notes: "",
+          notesOpen: false,
+        });
+      }
+      if (!added.length) {
+        toast({ title: "Already in this session", description: "Nothing new to add." });
+        return;
+      }
+      setSession((prev) => [...prev, ...added]);
+      toast({
+        title: `Added ${added.length} exercise${added.length === 1 ? "" : "s"}`,
+        description: "Fill in weight and reps as you go.",
+      });
+    },
+    [toast]
+  );
 
   const finish = useCallback(() => {
     const done = sessionRef.current.reduce(
@@ -872,6 +924,7 @@ function WorkoutView() {
           <QuickLog
             exerciseNames={session.map((e) => e.exercise.name)}
             onParsed={stageParsed}
+            onPasteWorkout={pasteWorkout}
           />
         </div>
         {visionOn && (
@@ -1020,9 +1073,11 @@ function ScanButton({
 function QuickLog({
   exerciseNames,
   onParsed,
+  onPasteWorkout,
 }: {
   exerciseNames: string[];
   onParsed: (r: ParseResult) => void;
+  onPasteWorkout: (text: string) => void;
 }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1041,6 +1096,14 @@ function QuickLog({
     <Input
       value={value}
       onChange={(e) => setValue(e.target.value)}
+      onPaste={(e) => {
+        // a multi-line paste is a whole workout, not one set
+        const text = e.clipboardData.getData("text");
+        if (text.trim().includes("\n")) {
+          e.preventDefault();
+          onPasteWorkout(text);
+        }
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -1049,7 +1112,7 @@ function QuickLog({
         }
       }}
       disabled={busy}
-      placeholder={'Quick log \u2014 \u201cbench 3\u00d78 @ 80 rpe 8\u201d'}
+      placeholder={'Quick log \u201cbench 3\u00d78 @ 80\u201d, or paste a whole workout'}
       aria-label="Quick log a set in plain words"
       className="font-mono text-[13.5px]"
     />
